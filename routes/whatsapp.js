@@ -90,10 +90,7 @@ async function handleTextMessage(from, messageText, userName) {
       sessionManager.setData(from, 'userName', userName);
       sessionManager.setData(from, 'phoneNumber', from);
       await whatsappService.sendWelcomeMessage(from, userName);
-      // Send main menu after welcome
-      setTimeout(async () => {
-        await whatsappService.sendMainMenu(from);
-      }, 1000);
+      // Welcome message already includes the service selection menu
     } else {
       await whatsappService.sendMainMenu(from);
     }
@@ -205,11 +202,16 @@ async function handleInteractiveMessage(from, interactive, userName) {
 async function startCounselorFlow(from, userName) {
   const introText = `*Professional Counseling Service*
 
-Hello ${userName}! I'll guide you through a brief assessment to connect you with the right counselor.
+Hello ${userName}! Welcome to our confidential counseling service.
 
-This information helps our counselors provide personalized support. All information is strictly confidential.
+I'll guide you through a brief assessment to help match you with the most suitable counselor for your needs. This process typically takes 2-3 minutes and ensures you receive personalized support.
 
-Let's begin:`;
+*Your privacy is our priority:*
+• All information shared is strictly confidential
+• Only qualified counselors will have access
+• Your responses help us provide better support
+
+Ready to begin? Let's start with understanding your situation:`;
 
   await whatsappService.sendTextMessage(from, introText);
   
@@ -234,7 +236,7 @@ Let's begin:`;
       // Send text question for descriptive answers
       await whatsappService.sendTextMessage(from, firstQuestion.question);
     }
-  }, 1000);
+  }, 1500);
 }
 
 async function handleCounselorQuestionnaire(from, messageText, userName) {
@@ -455,9 +457,7 @@ Thank you for bringing this to our attention. Your complaint has been submitted 
 • Integrated with the main wellness platform for faster resolution
 • You may receive updates through this chat if needed
 
-Thank you for helping us improve our university environment.
-
-_System developed by Gebin George for Christ University Student Wellness_`);
+Thank you for helping us improve our university environment.`);
 
     // Reset session
     sessionManager.setState(from, 'initial');
@@ -470,7 +470,7 @@ _System developed by Gebin George for Christ University Student Wellness_`);
   } catch (error) {
     console.error('Error submitting anonymous complaint (Developer: Gebin George):', error);
     await whatsappService.sendTextMessage(from, 
-      "Sorry, there was an error submitting your complaint. Please try again later or contact support.\n\n_If issue persists, contact developer: Gebin George_");
+      "Sorry, there was an error submitting your complaint. Please try again later or contact support.");
   }
 }
 
@@ -542,9 +542,7 @@ Thank you ${userName}! Your complaint regarding ${department} has been submitted
 • The department team has been notified via SMS
 • You may be contacted for follow-up within 2-3 business days
 
-Thank you for helping us improve our services!
-
-_System developed by Gebin George for Christ University Student Wellness_`);
+Thank you for helping us improve our services!`);
 
     // Send to department phone
     const departmentMessage = `*New Department Complaint*
@@ -560,8 +558,7 @@ ${complaintText}
 
 Please review and take appropriate action.
 
-_Christ University Student Wellness System_
-_Developed by Gebin George_`;
+_Christ University Student Wellness System_`;
 
     // Send to specific phone number: 919741301245 (correct WhatsApp API format)
     await whatsappService.sendTextMessage('919741301245', departmentMessage);
@@ -577,7 +574,7 @@ _Developed by Gebin George_`;
   } catch (error) {
     console.error('Error submitting department complaint (Developer: Gebin George):', error);
     await whatsappService.sendTextMessage(from, 
-      "Sorry, there was an error submitting your complaint. Please try again later or contact support.\n\n_If issue persists, contact developer: Gebin George_");
+      "Sorry, there was an error submitting your complaint. Please try again later or contact support.");
   }
 }
 
@@ -638,17 +635,20 @@ Your mental health and well-being are our top priorities. We're here to support 
 }
 
 async function handleCounselorMessageStudent(counselorPhone, studentPhone) {
-  // Send the student's WhatsApp contact to the counselor
-  const messageText = `*Student Contact Information*
+  // Create WhatsApp deep link to directly open the student's chat
+  const whatsappLink = `https://wa.me/${studentPhone}`;
+  
+  const messageText = `*Student Contact*
 
-*Phone Number:* ${studentPhone}
+Click this link to message the student directly:
+${whatsappLink}
 
-You can now message this student directly on WhatsApp by:
-1. Saving this number to your contacts
-2. Opening WhatsApp and searching for the contact
-3. Starting a conversation
+*Student Phone:* ${studentPhone}
 
-*Note:* Please maintain professional counseling standards in all communications.`;
+*Professional Guidelines:*
+• Maintain counseling ethics in all communications
+• Respect student privacy and confidentiality
+• Schedule sessions as per your availability`;
 
   await whatsappService.sendTextMessage(counselorPhone, messageText);
 }
