@@ -97,63 +97,95 @@ class WhatsAppService {
 
   // Send welcome message with main menu
   async sendWelcomeMessage(to, userName) {
-    const welcomeText = `🌟 Hello ${userName}! 
+    const welcomeText = `Hello ${userName}!
 
-Welcome to *Christ Mental Health Support System* 
+Welcome to *Christ University Student Wellness Support System*
 
-🔒 *Privacy Notice:* This WhatsApp chat is completely anonymous and confidential. Your conversations are secure and private.
+*Privacy Notice:* This WhatsApp chat is completely anonymous and confidential. Your conversations are secure and private.
 
-🤝 *We're here for you!* This platform is designed to:
+*We're here for you!* This platform is designed to:
 • Connect you with professional counselors
-• Provide a safe space for concerns and complaints  
+• Provide a safe space for concerns and complaints
 • Offer mental health support and resources
 • Build a supportive community
 
-Please select an option below to get started:`;
+Please select an option from the menu below:`;
 
-    const buttons = [
-      { id: 'connect_counselors', title: 'Counselors' },
-      { id: 'anonymous_complaints', title: 'Anonymous Report' },
-      { id: 'department_complaints', title: 'Dept Complaints' }
+    const sections = [
+      {
+        title: "Support Services",
+        rows: [
+          {
+            id: "connect_counselors",
+            title: "Connect with Counselors",
+            description: "Get professional mental health support"
+          },
+          {
+            id: "anonymous_complaints",
+            title: "Anonymous Complaints",
+            description: "Submit anonymous concerns safely"
+          },
+          {
+            id: "department_complaints",
+            title: "Department Complaints",
+            description: "Report department-specific issues"
+          }
+        ]
+      },
+      {
+        title: "Information & Community",
+        rows: [
+          {
+            id: "community",
+            title: "Community Platform",
+            description: "Visit our wellness community website"
+          },
+          {
+            id: "about",
+            title: "About This Service",
+            description: "Learn about our support system"
+          }
+        ]
+      }
     ];
 
-    return await this.sendButtonMessage(to, welcomeText, buttons);
+    return await this.sendListMessage(to, welcomeText, "Select Service", sections);
   }
 
   // Send main menu
   async sendMainMenu(to) {
     const sections = [
       {
-        title: "🌟 Support Services",
+        title: "Support Services",
         rows: [
           {
             id: "connect_counselors",
-            title: "👨‍⚕️ Connect with Counselors",
+            title: "Connect with Counselors",
             description: "Get professional mental health support"
           },
           {
             id: "anonymous_complaints",
-            title: "🔒 Anonymous Complaints",
+            title: "Anonymous Complaints",
             description: "Submit anonymous concerns safely"
           },
           {
             id: "department_complaints",
-            title: "🏢 Department Complaints",
+            title: "Department Complaints",
             description: "Report department-specific issues"
           }
         ]
       },
       {
-        title: "📱 Information & Community",
+        title: "Information & Community",
         rows: [
           {
             id: "community",
-            title: "🤝 Community",
-            description: "Visit our wellness community platform"
+            title: "Community Platform",
+            description: "Visit our wellness community website"
           },
           {
             id: "about",
-            title: "ℹ️ About",
+            title: "About This Service",
             description: "Learn about our support system"
           }
         ]
@@ -172,16 +204,16 @@ Please select an option below to get started:`;
   async sendDepartmentSelection(to) {
     const sections = [
       {
-        title: "🎓 School of Sciences",
+        title: "School of Sciences",
         rows: [
           {
             id: "dept_mca",
-            title: "💻 MCA",
+            title: "MCA",
             description: "Master of Computer Applications"
           },
           {
             id: "dept_msc_aiml",
-            title: "🤖 MSC AIML",
+            title: "MSC AIML",
             description: "MSc Artificial Intelligence & Machine Learning"
           }
         ]

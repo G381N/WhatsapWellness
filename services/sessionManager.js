@@ -81,27 +81,27 @@ class SessionManager {
     return [
       {
         key: 'issue_description',
-        question: '🤔 What specific issue or concern would you like to discuss with a counselor?\n\nPlease describe your situation in your own words.',
+        question: 'What specific issue or concern would you like to discuss with a counselor?\n\nPlease describe your situation in your own words.',
         state: 'counselor_q1'
       },
       {
         key: 'issue_duration',
-        question: '⏰ How long have you been experiencing this issue?\n\nPlease choose:\n1️⃣ Less than a week\n2️⃣ 1-2 weeks\n3️⃣ 1 month\n4️⃣ More than a month\n5️⃣ Several months',
+        question: 'How long have you been experiencing this issue?\n\nPlease choose:\n1. Less than a week\n2. 1-2 weeks\n3. 1 month\n4. More than a month\n5. Several months',
         state: 'counselor_q2'
       },
       {
         key: 'previous_help',
-        question: '🔄 Have you sought help for this issue before?\n\nPlease choose:\n1️⃣ Yes, from a professional counselor\n2️⃣ Yes, from friends/family\n3️⃣ Yes, from online resources\n4️⃣ No, this is my first time seeking help',
+        question: 'Have you sought help for this issue before?\n\nPlease choose:\n1. Yes, from a professional counselor\n2. Yes, from friends/family\n3. Yes, from online resources\n4. No, this is my first time seeking help',
         state: 'counselor_q3'
       },
       {
         key: 'urgency_level',
-        question: '🚨 How urgent do you feel your need for support is?\n\nPlease choose:\n1️⃣ Very urgent - need immediate help\n2️⃣ Somewhat urgent - within this week\n3️⃣ Moderate - within 2 weeks\n4️⃣ Not urgent - flexible timing',
+        question: 'How urgent do you feel your need for support is?\n\nPlease choose:\n1. Very urgent - need immediate help\n2. Somewhat urgent - within this week\n3. Moderate - within 2 weeks\n4. Not urgent - flexible timing',
         state: 'counselor_q4'
       },
       {
         key: 'preferred_contact',
-        question: '📞 How would you prefer the counselor to contact you?\n\nPlease choose:\n1️⃣ WhatsApp message\n2️⃣ Phone call\n3️⃣ Email\n4️⃣ In-person meeting\n5️⃣ Video call',
+        question: 'How would you prefer the counselor to contact you?\n\nPlease choose:\n1. WhatsApp message\n2. Phone call\n3. Email\n4. In-person meeting\n5. Video call',
         state: 'counselor_q5'
       }
     ];

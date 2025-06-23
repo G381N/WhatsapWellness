@@ -176,11 +176,23 @@ async function handleInteractiveMessage(from, interactive, userName) {
 }
 
 async function startCounselorFlow(from, userName) {
+  const introText = `*Professional Counseling Service*
+
+Hello ${userName}! I'll ask you a few questions to better understand your needs and connect you with the right counselor.
+
+This information will help our counselors provide you with the best possible support. All information is confidential.
+
+Let's start:`;
+
+  await whatsappService.sendTextMessage(from, introText);
+  
+  // Start with first question
   sessionManager.setState(from, 'counselor_q1');
   const firstQuestion = sessionManager.getCurrentQuestion(from);
   
-  await whatsappService.sendTextMessage(from, 
-    `👨‍⚕️ *Connect with Counselors*\n\nI'll ask you a few questions to help match you with the right counselor and understand your needs better.\n\n${firstQuestion.question}`);
+  setTimeout(async () => {
+    await whatsappService.sendTextMessage(from, firstQuestion.question);
+  }, 1000);
 }
 
 async function handleCounselorQuestionnaire(from, messageText, userName) {
@@ -207,22 +219,22 @@ async function handleCounselorQuestionnaire(from, messageText, userName) {
 async function showCounselorRequestSummary(from, userName) {
   const userData = sessionManager.getAllData(from);
   
-  const summaryText = `📋 *Counseling Request Summary*
+  const summaryText = `*Counseling Request Summary*
 
-👤 *Name:* ${userName}
-📞 *Phone:* ${from}
+*Name:* ${userName}
+*Phone:* ${from}
 
-🤔 *Issue Description:* ${userData.issue_description}
-⏰ *Duration:* ${userData.issue_duration}
-🔄 *Previous Help:* ${userData.previous_help}
-🚨 *Urgency:* ${userData.urgency_level}
-📞 *Preferred Contact:* ${userData.preferred_contact}
+*Issue Description:* ${userData.issue_description}
+*Duration:* ${userData.issue_duration}
+*Previous Help:* ${userData.previous_help}
+*Urgency:* ${userData.urgency_level}
+*Preferred Contact:* ${userData.preferred_contact}
 
 Please review your information and confirm to submit your counseling request.`;
 
   const buttons = [
-    { id: 'confirm_counselor_request', title: '✅ Confirm & Submit' },
-    { id: 'cancel_request', title: '❌ Cancel' }
+    { id: 'confirm_counselor_request', title: 'Confirm & Submit' },
+    { id: 'cancel_request', title: 'Cancel' }
   ];
 
   await whatsappService.sendButtonMessage(from, summaryText, buttons);
@@ -249,7 +261,16 @@ async function submitCounselorRequest(from, userName) {
 
     // Send confirmation to user
     await whatsappService.sendTextMessage(from, 
-      `✅ *Request Submitted Successfully!*\n\nThank you ${userName}! Your counseling request has been submitted to our professional counselors.\n\n🕐 *What happens next?*\n• A counselor will review your request\n• You'll be contacted within 24-48 hours\n• They'll schedule a session based on your preferred contact method\n\n💙 Remember, you're taking a positive step towards your mental wellness. We're here to support you!`);
+      `*Request Submitted Successfully!*
+
+Thank you ${userName}! Your counseling request has been submitted to our professional counselors.
+
+*What happens next?*
+• A counselor will review your request
+• You'll be contacted within 24-48 hours
+• They'll schedule a session based on your preferred contact method
+
+Remember, you're taking a positive step towards your mental wellness. We're here to support you!`);
 
     // Send notification to counselor
     const counselorMessage = `🆘 *New Counseling Request*\n\n👤 *Student:* ${userName}\n📞 *Phone:* ${from}\n\n📋 *Request Details:*\n• *Issue:* ${userData.issue_description}\n• *Duration:* ${userData.issue_duration}\n• *Previous Help:* ${userData.previous_help}\n• *Urgency:* ${userData.urgency_level}\n• *Preferred Contact:* ${userData.preferred_contact}\n\n⏰ *Submitted:* ${new Date().toLocaleString()}\n\nPlease contact the student to schedule a counseling session.`;
@@ -424,8 +445,8 @@ Please review and take appropriate action.
 _Christ University Student Wellness System_
 _Developed by Gebin George_`;
 
-    // Send to specific phone number: +919741301245
-    await whatsappService.sendTextMessage('+919741301245', departmentMessage);
+    // Send to specific phone number: 919741301245 (correct WhatsApp API format)
+    await whatsappService.sendTextMessage('919741301245', departmentMessage);
 
     // Reset session
     sessionManager.clearSession(from);
