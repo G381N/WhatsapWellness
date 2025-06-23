@@ -112,9 +112,9 @@ Welcome to *Christ Mental Health Support System*
 Please select an option below to get started:`;
 
     const buttons = [
-      { id: 'connect_counselors', title: '👨‍⚕️ Connect with Counselors' },
-      { id: 'anonymous_complaints', title: '🔒 Anonymous Complaints' },
-      { id: 'department_complaints', title: '🏢 Department Complaints' }
+      { id: 'connect_counselors', title: 'Counselors' },
+      { id: 'anonymous_complaints', title: 'Anonymous Report' },
+      { id: 'department_complaints', title: 'Dept Complaints' }
     ];
 
     return await this.sendButtonMessage(to, welcomeText, buttons);
