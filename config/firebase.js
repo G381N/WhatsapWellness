@@ -15,10 +15,33 @@ let db = null;
 function initializeFirebase() {
   try {
     if (!admin.apps.length) {
-      // Parse Firebase private key (handles newlines in environment variables)
-      const privateKey = process.env.FIREBASE_PRIVATE_KEY 
-        ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-        : undefined;
+      // Enhanced private key parsing - handles multiple formatting issues
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      
+      if (privateKey) {
+        // Replace escaped newlines with actual newlines
+        privateKey = privateKey.replace(/\\n/g, '\n');
+        
+        // Remove extra quotes that might be added by environment variable systems
+        privateKey = privateKey.replace(/^"(.*)"$/, '$1');
+        privateKey = privateKey.replace(/^'(.*)'$/, '$1');
+        
+        // Ensure proper PEM format
+        if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
+          // If the key doesn't have headers, try to reconstruct it
+          privateKey = privateKey.replace(/-----BEGIN PRIVATE KEY-----/g, '');
+          privateKey = privateKey.replace(/-----END PRIVATE KEY-----/g, '');
+          privateKey = privateKey.replace(/\s/g, '');
+          
+          // Add proper PEM headers and format
+          const chunks = privateKey.match(/.{1,64}/g) || [];
+          privateKey = '-----BEGIN PRIVATE KEY-----\n' + chunks.join('\n') + '\n-----END PRIVATE KEY-----';
+        }
+        
+        // Clean up any double newlines or spaces
+        privateKey = privateKey.replace(/\n\s+/g, '\n');
+        privateKey = privateKey.replace(/\n+/g, '\n');
+      }
 
       const serviceAccount = {
         type: process.env.FIREBASE_TYPE || 'service_account',
@@ -32,6 +55,13 @@ function initializeFirebase() {
         auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
         client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
       };
+
+      // Debug logging for troubleshooting (without exposing the actual key)
+      console.log('🔧 Firebase config check (Developer: Gebin George):');
+      console.log('  - Project ID:', serviceAccount.project_id ? '✓' : '✗');
+      console.log('  - Client Email:', serviceAccount.client_email ? '✓' : '✗');
+      console.log('  - Private Key:', privateKey ? `✓ (length: ${privateKey.length})` : '✗');
+      console.log('  - Private Key starts with PEM header:', privateKey?.startsWith('-----BEGIN PRIVATE KEY-----') ? '✓' : '✗');
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
