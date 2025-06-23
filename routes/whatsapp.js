@@ -73,7 +73,7 @@ async function processMessage(message, contacts) {
         break;
       default:
         await whatsappService.sendTextMessage(from, 
-          "I can only process text messages and menu selections. Please use the menu options or type 'menu' to see available services.");
+          `Hello ${userName}! Type 'menu' to see all available services.`);
     }
   } catch (error) {
     console.error('❌ Error processing message:', error);
@@ -120,8 +120,7 @@ async function handleTextMessage(from, messageText, userName) {
 
     default:
       await whatsappService.sendTextMessage(from, 
-        `Hello ${userName}! 👋\n\nType 'menu' to see all available services, or choose from the options below:`);
-      await whatsappService.sendMainMenu(from);
+        `Hello ${userName}! Type 'menu' to see all available services.`);
   }
 }
 
@@ -170,19 +169,47 @@ async function handleInteractiveMessage(from, interactive, userName) {
       await submitDepartmentComplaint(from, userName);
       break;
 
+    // Handle counselor questionnaire interactive responses
+    case 'duration_1':
+    case 'duration_2':
+    case 'duration_3':
+    case 'duration_4':
+    case 'duration_5':
+    case 'help_1':
+    case 'help_2':
+    case 'help_3':
+    case 'help_4':
+    case 'urgency_1':
+    case 'urgency_2':
+    case 'urgency_3':
+    case 'urgency_4':
+    case 'contact_1':
+    case 'contact_2':
+    case 'contact_3':
+    case 'contact_4':
+    case 'contact_5':
+      await handleCounselorInteractiveResponse(from, replyId, userName);
+      break;
+
     default:
-      await whatsappService.sendMainMenu(from);
+      // Handle counselor "Message Student" button
+      if (replyId.startsWith('message_student_')) {
+        const studentPhone = replyId.replace('message_student_', '');
+        await handleCounselorMessageStudent(from, studentPhone);
+      } else {
+        await whatsappService.sendMainMenu(from);
+      }
   }
 }
 
 async function startCounselorFlow(from, userName) {
   const introText = `*Professional Counseling Service*
 
-Hello ${userName}! I'll ask you a few questions to better understand your needs and connect you with the right counselor.
+Hello ${userName}! I'll guide you through a brief assessment to connect you with the right counselor.
 
-This information will help our counselors provide you with the best possible support. All information is confidential.
+This information helps our counselors provide personalized support. All information is strictly confidential.
 
-Let's start:`;
+Let's begin:`;
 
   await whatsappService.sendTextMessage(from, introText);
   
@@ -191,7 +218,22 @@ Let's start:`;
   const firstQuestion = sessionManager.getCurrentQuestion(from);
   
   setTimeout(async () => {
-    await whatsappService.sendTextMessage(from, firstQuestion.question);
+    if (firstQuestion.type === 'list') {
+      // Send interactive list for multiple choice questions
+      const sections = [{
+        title: "Select an option",
+        rows: firstQuestion.options.map(option => ({
+          id: option.id,
+          title: option.title,
+          description: ""
+        }))
+      }];
+      
+      await whatsappService.sendListMessage(from, firstQuestion.question, "Choose Option", sections);
+    } else {
+      // Send text question for descriptive answers
+      await whatsappService.sendTextMessage(from, firstQuestion.question);
+    }
   }, 1000);
 }
 
@@ -208,10 +250,68 @@ async function handleCounselorQuestionnaire(from, messageText, userName) {
     if (nextQuestion) {
       // Move to next question
       sessionManager.setState(from, nextQuestion.state);
-      await whatsappService.sendTextMessage(from, nextQuestion.question);
+      
+      if (nextQuestion.type === 'list') {
+        // Send interactive list for multiple choice questions
+        const sections = [{
+          title: "Select an option",
+          rows: nextQuestion.options.map(option => ({
+            id: option.id,
+            title: option.title,
+            description: ""
+          }))
+        }];
+        
+        await whatsappService.sendListMessage(from, nextQuestion.question, "Choose Option", sections);
+      } else {
+        // Send text question for descriptive answers
+        await whatsappService.sendTextMessage(from, nextQuestion.question);
+      }
     } else {
       // Questionnaire complete - show summary
       await showCounselorRequestSummary(from, userName);
+    }
+  }
+}
+
+async function handleCounselorInteractiveResponse(from, replyId, userName) {
+  const currentQuestion = sessionManager.getCurrentQuestion(from);
+  
+  if (currentQuestion && currentQuestion.type === 'list') {
+    // Find the selected option
+    const selectedOption = currentQuestion.options.find(opt => opt.id === replyId);
+    
+    if (selectedOption) {
+      // Store the answer
+      sessionManager.setData(from, currentQuestion.key, selectedOption.value);
+      
+      // Get next question
+      const nextQuestion = sessionManager.getNextQuestion(from);
+      
+      if (nextQuestion) {
+        // Move to next question
+        sessionManager.setState(from, nextQuestion.state);
+        
+        if (nextQuestion.type === 'list') {
+          // Send interactive list for multiple choice questions
+          const sections = [{
+            title: "Select an option",
+            rows: nextQuestion.options.map(option => ({
+              id: option.id,
+              title: option.title,
+              description: ""
+            }))
+          }];
+          
+          await whatsappService.sendListMessage(from, nextQuestion.question, "Choose Option", sections);
+        } else {
+          // Send text question for descriptive answers
+          await whatsappService.sendTextMessage(from, nextQuestion.question);
+        }
+      } else {
+        // Questionnaire complete - show summary
+        await showCounselorRequestSummary(from, userName);
+      }
     }
   }
 }
@@ -272,10 +372,28 @@ Thank you ${userName}! Your counseling request has been submitted to our profess
 
 Remember, you're taking a positive step towards your mental wellness. We're here to support you!`);
 
-    // Send notification to counselor
-    const counselorMessage = `🆘 *New Counseling Request*\n\n👤 *Student:* ${userName}\n📞 *Phone:* ${from}\n\n📋 *Request Details:*\n• *Issue:* ${userData.issue_description}\n• *Duration:* ${userData.issue_duration}\n• *Previous Help:* ${userData.previous_help}\n• *Urgency:* ${userData.urgency_level}\n• *Preferred Contact:* ${userData.preferred_contact}\n\n⏰ *Submitted:* ${new Date().toLocaleString()}\n\nPlease contact the student to schedule a counseling session.`;
+    // Send notification to counselor with interactive button
+    const counselorMessage = `*New Counseling Request*
 
-    await whatsappService.sendTextMessage(process.env.COUNSELOR_PHONE, counselorMessage);
+*Student:* ${userName}
+*Phone:* ${from}
+
+*Request Details:*
+• Issue: ${userData.issue_description}
+• Duration: ${userData.issue_duration}
+• Previous Help: ${userData.previous_help}
+• Urgency: ${userData.urgency_level}
+• Preferred Contact: ${userData.preferred_contact}
+
+*Submitted:* ${new Date().toLocaleString()}
+
+Please contact the student to schedule a counseling session.`;
+
+    const counselorButtons = [
+      { id: `message_student_${from}`, title: 'Message Student' }
+    ];
+
+    await whatsappService.sendButtonMessage(process.env.COUNSELOR_PHONE, counselorMessage, counselorButtons);
 
     // Reset session
     sessionManager.clearSession(from);
@@ -293,9 +411,9 @@ Remember, you're taking a positive step towards your mental wellness. We're here
 }
 
 async function startAnonymousComplaintFlow(from, userName) {
-  const disclaimerText = `🔒 *Anonymous Complaints*
+  const disclaimerText = `*Anonymous Complaints*
 
-⚠️ *Important Disclaimer:*
+*Important Disclaimer:*
 • This complaint will be completely anonymous
 • Only university-level administrators will have access to review this complaint
 • Your identity will NOT be shared with anyone
@@ -327,17 +445,17 @@ async function handleAnonymousComplaint(from, complaintText, userName) {
     await saveAnonymousComplaint(complaintData);
 
     await whatsappService.sendTextMessage(from, 
-      `✅ *Anonymous Complaint Submitted Successfully*
+      `*Anonymous Complaint Submitted Successfully*
 
 Thank you for bringing this to our attention. Your complaint has been submitted anonymously to the university administrators and is now integrated with our main system.
 
-🔒 *Your Privacy is Protected:*
+*Your Privacy is Protected:*
 • Your identity remains completely anonymous
 • Only authorized administrators can access this complaint  
 • Integrated with the main wellness platform for faster resolution
 • You may receive updates through this chat if needed
 
-💙 Thank you for helping us improve our university environment.
+Thank you for helping us improve our university environment.
 
 _System developed by Gebin George for Christ University Student Wellness_`);
 
@@ -358,7 +476,7 @@ _System developed by Gebin George for Christ University Student Wellness_`);
 
 async function startDepartmentComplaintFlow(from, userName) {
   await whatsappService.sendTextMessage(from, 
-    "🏢 *Department Complaints*\n\nPlease select your department from the list below:");
+    "*Department Complaints*\n\nPlease select your department from the list below:");
   await whatsappService.sendDepartmentSelection(from);
   sessionManager.setState(from, 'department_selection');
 }
@@ -367,7 +485,7 @@ async function startDepartmentComplaintInput(from, userName) {
   const department = sessionManager.getData(from, 'selectedDepartment');
   
   await whatsappService.sendTextMessage(from, 
-    `📝 *Department: ${department}*\n\nPlease describe your complaint or concern related to this department. Be as detailed as possible to help us address your issue effectively.`);
+    `*Department: ${department}*\n\nPlease describe your complaint or concern related to this department. Be as detailed as possible to help us address your issue effectively.`);
   
   sessionManager.setState(from, 'department_complaint_input');
 }
@@ -375,20 +493,20 @@ async function startDepartmentComplaintInput(from, userName) {
 async function handleDepartmentComplaint(from, complaintText, userName) {
   const department = sessionManager.getData(from, 'selectedDepartment');
   
-  const summaryText = `📋 *Department Complaint Summary*
+  const summaryText = `*Department Complaint Summary*
 
-👤 *Name:* ${userName}
-📞 *Phone:* ${from}
-🏢 *Department:* ${department}
+*Name:* ${userName}
+*Phone:* ${from}
+*Department:* ${department}
 
-📝 *Complaint:*
+*Complaint:*
 ${complaintText}
 
 Please review and confirm to submit your complaint to the department.`;
 
   const buttons = [
-    { id: 'confirm_department_complaint', title: '✅ Submit Complaint' },
-    { id: 'cancel_complaint', title: '❌ Cancel' }
+    { id: 'confirm_department_complaint', title: 'Submit Complaint' },
+    { id: 'cancel_complaint', title: 'Cancel' }
   ];
 
   sessionManager.setData(from, 'complaintText', complaintText);
@@ -415,30 +533,30 @@ async function submitDepartmentComplaint(from, userName) {
 
     // Send confirmation to user
     await whatsappService.sendTextMessage(from, 
-      `✅ *Complaint Submitted Successfully!*
+      `*Complaint Submitted Successfully!*
 
-Thank you ${userName}! Your complaint regarding ${department} has been submitted and forwarded to +919741301245.
+Thank you ${userName}! Your complaint regarding ${department} has been submitted and forwarded to the department team.
 
-📧 *What happens next?*
+*What happens next?*
 • Your complaint will be reviewed by department representatives
 • The department team has been notified via SMS
 • You may be contacted for follow-up within 2-3 business days
 
-💙 Thank you for helping us improve our services!
+Thank you for helping us improve our services!
 
 _System developed by Gebin George for Christ University Student Wellness_`);
 
-    // Send to department phone: +919741301245
-    const departmentMessage = `🆘 *New Department Complaint*
+    // Send to department phone
+    const departmentMessage = `*New Department Complaint*
 
-🏢 *Department:* ${department}
-👤 *Student:* ${userName}
-📞 *Phone:* ${from}
+*Department:* ${department}
+*Student:* ${userName}
+*Phone:* ${from}
 
-📝 *Complaint:*
+*Complaint:*
 ${complaintText}
 
-⏰ *Submitted:* ${new Date().toLocaleString()}
+*Submitted:* ${new Date().toLocaleString()}
 
 Please review and take appropriate action.
 
@@ -465,7 +583,18 @@ _Developed by Gebin George_`;
 
 async function handleCommunityRedirect(from, userName) {
   await whatsappService.sendTextMessage(from, 
-    `🤝 *Community Platform*\n\nHello ${userName}! Visit our wellness community platform to:\n\n• Connect with fellow students\n• Access mental health resources\n• Join wellness activities\n• Share experiences safely\n\n🌐 *Website:* ${process.env.COMMUNITY_WEBSITE}\n\n💙 Join our supportive community today!`);
+    `*Community Platform*
+
+Hello ${userName}! Visit our wellness community platform to:
+
+• Connect with fellow students
+• Access mental health resources
+• Join wellness activities
+• Share experiences safely
+
+*Website:* ${process.env.COMMUNITY_WEBSITE || 'https://your-community-website.com'}
+
+Join our supportive community today!`);
   
   // Show main menu
   setTimeout(async () => {
@@ -474,29 +603,29 @@ async function handleCommunityRedirect(from, userName) {
 }
 
 async function handleAboutInfo(from, userName) {
-  const aboutText = `ℹ️ *About Christ Mental Health Support System*
+  const aboutText = `*About Christ University Student Wellness Support System*
 
-🌟 *Our Mission:*
+*Our Mission:*
 We're dedicated to providing comprehensive mental health support for Christ University students.
 
-🤝 *What We Offer:*
+*What We Offer:*
 • Professional counseling services
 • Anonymous complaint system
 • Department-specific support
 • Mental wellness resources
 • Supportive community platform
 
-🔒 *Privacy & Safety:*
+*Privacy & Safety:*
 • All conversations are confidential
 • Anonymous options available
 • Professional counselors
 • 24/7 support access
 
-💙 *Our Commitment:*
+*Our Commitment:*
 Your mental health and well-being are our top priorities. We're here to support you through every step of your academic journey.
 
-📞 *Contact:* This WhatsApp bot
-🌐 *Website:* ${process.env.COMMUNITY_WEBSITE}
+*Contact:* This WhatsApp bot
+*Website:* ${process.env.COMMUNITY_WEBSITE || 'https://your-community-website.com'}
 
 *Remember: Seeking help is a sign of strength, not weakness.*`;
 
@@ -508,10 +637,26 @@ Your mental health and well-being are our top priorities. We're here to support 
   }, 2000);
 }
 
+async function handleCounselorMessageStudent(counselorPhone, studentPhone) {
+  // Send the student's WhatsApp contact to the counselor
+  const messageText = `*Student Contact Information*
+
+*Phone Number:* ${studentPhone}
+
+You can now message this student directly on WhatsApp by:
+1. Saving this number to your contacts
+2. Opening WhatsApp and searching for the contact
+3. Starting a conversation
+
+*Note:* Please maintain professional counseling standards in all communications.`;
+
+  await whatsappService.sendTextMessage(counselorPhone, messageText);
+}
+
 // Cleanup old sessions every hour
 setInterval(() => {
   sessionManager.cleanupOldSessions();
-  console.log('🧹 Cleaned up old user sessions');
+  console.log('Cleaned up old user sessions');
 }, 60 * 60 * 1000);
 
 module.exports = router; 

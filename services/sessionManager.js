@@ -76,33 +76,64 @@ class SessionManager {
     return session.data;
   }
 
-  // Counselor questionnaire states
+  // Counselor questionnaire states with interactive options
   getCounselorQuestions() {
     return [
       {
         key: 'issue_description',
         question: 'What specific issue or concern would you like to discuss with a counselor?\n\nPlease describe your situation in your own words.',
-        state: 'counselor_q1'
+        state: 'counselor_q1',
+        type: 'text' // This one stays as text input for detailed description
       },
       {
         key: 'issue_duration',
-        question: 'How long have you been experiencing this issue?\n\nPlease choose:\n1. Less than a week\n2. 1-2 weeks\n3. 1 month\n4. More than a month\n5. Several months',
-        state: 'counselor_q2'
+        question: 'How long have you been experiencing this issue?',
+        state: 'counselor_q2',
+        type: 'list',
+        options: [
+          { id: 'duration_1', title: 'Less than a week', value: 'Less than a week' },
+          { id: 'duration_2', title: '1-2 weeks', value: '1-2 weeks' },
+          { id: 'duration_3', title: '1 month', value: '1 month' },
+          { id: 'duration_4', title: 'More than a month', value: 'More than a month' },
+          { id: 'duration_5', title: 'Several months', value: 'Several months' }
+        ]
       },
       {
         key: 'previous_help',
-        question: 'Have you sought help for this issue before?\n\nPlease choose:\n1. Yes, from a professional counselor\n2. Yes, from friends/family\n3. Yes, from online resources\n4. No, this is my first time seeking help',
-        state: 'counselor_q3'
+        question: 'Have you sought help for this issue before?',
+        state: 'counselor_q3',
+        type: 'list',
+        options: [
+          { id: 'help_1', title: 'Professional counselor', value: 'Yes, from a professional counselor' },
+          { id: 'help_2', title: 'Friends/family', value: 'Yes, from friends/family' },
+          { id: 'help_3', title: 'Online resources', value: 'Yes, from online resources' },
+          { id: 'help_4', title: 'First time seeking help', value: 'No, this is my first time seeking help' }
+        ]
       },
       {
         key: 'urgency_level',
-        question: 'How urgent do you feel your need for support is?\n\nPlease choose:\n1. Very urgent - need immediate help\n2. Somewhat urgent - within this week\n3. Moderate - within 2 weeks\n4. Not urgent - flexible timing',
-        state: 'counselor_q4'
+        question: 'How urgent do you feel your need for support is?',
+        state: 'counselor_q4',
+        type: 'list',
+        options: [
+          { id: 'urgency_1', title: 'Very urgent', value: 'Very urgent - need immediate help' },
+          { id: 'urgency_2', title: 'Somewhat urgent', value: 'Somewhat urgent - within this week' },
+          { id: 'urgency_3', title: 'Moderate', value: 'Moderate - within 2 weeks' },
+          { id: 'urgency_4', title: 'Not urgent', value: 'Not urgent - flexible timing' }
+        ]
       },
       {
         key: 'preferred_contact',
-        question: 'How would you prefer the counselor to contact you?\n\nPlease choose:\n1. WhatsApp message\n2. Phone call\n3. Email\n4. In-person meeting\n5. Video call',
-        state: 'counselor_q5'
+        question: 'How would you prefer the counselor to contact you?',
+        state: 'counselor_q5',
+        type: 'list',
+        options: [
+          { id: 'contact_1', title: 'WhatsApp message', value: 'WhatsApp message' },
+          { id: 'contact_2', title: 'Phone call', value: 'Phone call' },
+          { id: 'contact_3', title: 'Email', value: 'Email' },
+          { id: 'contact_4', title: 'In-person meeting', value: 'In-person meeting' },
+          { id: 'contact_5', title: 'Video call', value: 'Video call' }
+        ]
       }
     ];
   }
