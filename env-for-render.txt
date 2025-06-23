@@ -1,0 +1,72 @@
+# =============================================================================
+# CHRIST UNIVERSITY STUDENT WELLNESS - WHATSAPP BOT ENVIRONMENT VARIABLES
+# Developer: Gebin George (gebingeorge)
+# Copy these to your Render Environment Variables section
+# =============================================================================
+
+# WhatsApp Cloud API Configuration
+WHATSAPP_ACCESS_TOKEN=YOUR_PAT_TOKEN_HERE
+WHATSAPP_PHONE_NUMBER_ID=your_whatsapp_phone_number_id_here
+WHATSAPP_VERIFY_TOKEN=gebingeorge_wellness_bot_2024
+WHATSAPP_WEBHOOK_SECRET=gebingeorge
+
+# Firebase Configuration (From your website - christwellness-4ed46)
+FIREBASE_PROJECT_ID=christwellness-4ed46
+FIREBASE_API_KEY=AIzaSyAYNNgABi9rnnQ0e-N2sgXaL5Rp_IkWwL8
+FIREBASE_AUTH_DOMAIN=christwellness-4ed46.firebaseapp.com
+FIREBASE_STORAGE_BUCKET=christwellness-4ed46.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=611093868868
+FIREBASE_APP_ID=1:611093868868:web:80a559dbc471449fdaa711
+
+# Firebase Admin SDK (Service Account) - REQUIRED FOR WHATSAPP BOT
+# Get these from Firebase Console > Project Settings > Service Accounts > Generate new private key
+FIREBASE_TYPE=service_account
+FIREBASE_PRIVATE_KEY_ID=your_firebase_private_key_id_here
+FIREBASE_PRIVATE_KEY=your_firebase_private_key_here
+FIREBASE_CLIENT_EMAIL=your_firebase_client_email_here
+FIREBASE_CLIENT_ID=your_firebase_client_id_here
+FIREBASE_AUTH_URI=https://accounts.google.com/o/oauth2/auth
+FIREBASE_TOKEN_URI=https://oauth2.googleapis.com/token
+FIREBASE_AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/oauth2/v1/certs
+FIREBASE_CLIENT_X509_CERT_URL=your_firebase_client_x509_cert_url_here
+
+# Application Configuration
+PORT=3000
+NODE_ENV=production
+
+# Contact Information (Your phone number for department complaints)
+COUNSELOR_PHONE=+919741301245
+DEPARTMENT_PHONE=+919741301245
+ADMIN_PHONE=+919741301245
+
+# Website Integration
+COMMUNITY_WEBSITE=https://your-vercel-website-url.vercel.app
+PRIVACY_POLICY_URL=https://your-privacy-policy-url.vercel.app
+
+# Security (Secret Key: gebingeorge)
+SECRET_KEY=gebingeorge
+API_SECRET=gebingeorge_christ_wellness_2024
+
+# Developer Information
+DEVELOPER_NAME=Gebin George
+DEVELOPER_EMAIL=gebingeorge@example.com
+DEVELOPER_SIGNATURE=Developed by Gebin George - Christ University Student Wellness System
+
+# Monitoring & Performance
+LOG_LEVEL=info
+ENABLE_LOGGING=true
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+SESSION_TIMEOUT_MS=1800000
+CLEANUP_INTERVAL_MS=3600000
+
+# =============================================================================
+# INSTRUCTIONS:
+# 1. Replace YOUR_PAT_TOKEN_HERE with your WhatsApp PAT token
+# 2. Get Firebase Admin SDK credentials from Firebase Console:
+#    - Go to Firebase Console > Project Settings > Service Accounts
+#    - Click "Generate new private key" 
+#    - Download the JSON file and extract the required values
+# 3. Replace your_whatsapp_phone_number_id_here with your WhatsApp Phone Number ID
+# 4. Update website URLs with your actual Vercel deployment URLs
+# ============================================================================= 

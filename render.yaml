@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: christ-wellness-whatsapp-bot
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+    disk:
+      name: tmp
+      mountPath: /tmp
+      sizeGB: 1 

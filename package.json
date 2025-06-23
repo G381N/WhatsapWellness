@@ -1,0 +1,27 @@
+{
+  "name": "whatsapp-wellness-bot",
+  "version": "1.0.0",
+  "description": "Christ Mental Health Support System WhatsApp Chatbot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "firebase-admin": "^12.0.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": ["whatsapp", "chatbot", "mental-health", "wellness"],
+  "author": "Christ University",
+  "license": "MIT"
+} 
