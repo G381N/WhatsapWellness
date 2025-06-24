@@ -152,35 +152,40 @@ async function saveCounselorRequest(requestData) {
 }
 
 /**
- * Save Department Complaint with SMS notification to +919741301245
- * Developer: Gebin George
+ * Save Department Complaint to match website's Firebase structure
  */
 async function saveDepartmentComplaint(complaintData) {
   try {
     if (!db) {
-      throw new Error('Firebase not initialized - Contact developer Gebin George');
+      throw new Error('Firebase not initialized');
     }
 
+    // Structure the complaint to match the DepartmentComplaint interface from firebase-utils.ts
     const complaint = {
-      ...complaintData,
+      title: complaintData.title || `${complaintData.category} - ${complaintData.department}`,
+      description: complaintData.description,
+      category: complaintData.category,
+      department: complaintData.department,
+      severity: complaintData.severity || 'Medium',
       timestamp: admin.firestore.Timestamp.now(),
-      status: 'submitted',
-      source: 'whatsapp_bot',
-      notificationSent: true,
-      notificationPhone: '+919741301245',
-      developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
+      status: 'Open',
+      resolved: false,
+      studentName: complaintData.studentName,
+      studentPhone: complaintData.studentPhone,
+      source: complaintData.source || 'whatsapp_bot'
     };
 
+    // Save to the same collection used by the website
     const docRef = await db.collection('departmentComplaints').add(complaint);
     
-    console.log(`✅ Department complaint saved by Gebin George: ${docRef.id}`);
+    console.log(`✅ Department complaint saved with ID: ${docRef.id}`);
     
     return {
       id: docRef.id,
       ...complaint
     };
   } catch (error) {
-    console.error('❌ Error saving department complaint (Developer: Gebin George):', error);
+    console.error('❌ Error saving department complaint:', error);
     throw error;
   }
 }

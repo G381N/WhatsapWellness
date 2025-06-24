@@ -127,6 +127,27 @@ async function handleInteractiveMessage(from, interactive, userName) {
   
   const replyId = buttonReply?.id || listReply?.id;
 
+  // Get current session state to handle context-specific responses
+  const currentState = sessionManager.getState(from);
+
+  // Handle department selections
+  if (currentState === 'department_selection' && replyId?.startsWith('dept_')) {
+    await handleDepartmentSelectionResponse(from, replyId, userName);
+    return;
+  }
+
+  // Handle category selections  
+  if (currentState === 'category_selection' && replyId?.startsWith('cat_')) {
+    await handleCategorySelectionResponse(from, replyId, userName);
+    return;
+  }
+
+  // Handle severity selections
+  if (currentState === 'severity_selection' && replyId?.startsWith('sev_')) {
+    await handleSeveritySelectionResponse(from, replyId, userName);
+    return;
+  }
+
   switch (replyId) {
     case 'connect_counselors':
       await startCounselorFlow(from, userName);
@@ -148,22 +169,20 @@ async function handleInteractiveMessage(from, interactive, userName) {
       await handleAboutInfo(from, userName);
       break;
 
-    case 'dept_mca':
-      sessionManager.setData(from, 'selectedDepartment', 'MCA - Master of Computer Applications');
-      await startDepartmentComplaintInput(from, userName);
-      break;
-
-    case 'dept_msc_aiml':
-      sessionManager.setData(from, 'selectedDepartment', 'MSC AIML - MSc Artificial Intelligence & Machine Learning');
-      await startDepartmentComplaintInput(from, userName);
-      break;
-
     case 'confirm_counselor_request':
       await submitCounselorRequest(from, userName);
       break;
 
     case 'confirm_department_complaint':
       await submitDepartmentComplaint(from, userName);
+      break;
+
+    case 'cancel_complaint':
+      await whatsappService.sendTextMessage(from, "Complaint cancelled. Returning to main menu...");
+      sessionManager.clearSession(from);
+      setTimeout(async () => {
+        await whatsappService.sendMainMenu(from);
+      }, 1500);
       break;
 
     // Handle counselor questionnaire interactive responses
@@ -481,6 +500,37 @@ async function startDepartmentComplaintFlow(from, userName) {
   sessionManager.setState(from, 'department_selection');
 }
 
+async function handleDepartmentSelectionResponse(from, replyId, userName) {
+  const departmentName = whatsappService.getDepartmentName(replyId);
+  sessionManager.setData(from, 'selectedDepartment', departmentName);
+  sessionManager.setData(from, 'selectedDepartmentId', replyId);
+  
+  await whatsappService.sendTextMessage(from, 
+    `*Department Selected:* ${departmentName}\n\nNow, please select the category that best describes your complaint:`);
+  await whatsappService.sendComplaintCategorySelection(from);
+  sessionManager.setState(from, 'category_selection');
+}
+
+async function handleCategorySelectionResponse(from, replyId, userName) {
+  const categoryName = whatsappService.getCategoryName(replyId);
+  sessionManager.setData(from, 'selectedCategory', categoryName);
+  sessionManager.setData(from, 'selectedCategoryId', replyId);
+  
+  await whatsappService.sendTextMessage(from, 
+    `*Category Selected:* ${categoryName}\n\nPlease select the priority/severity level for your complaint:`);
+  await whatsappService.sendSeveritySelection(from);
+  sessionManager.setState(from, 'severity_selection');
+}
+
+async function handleSeveritySelectionResponse(from, replyId, userName) {
+  const severityName = whatsappService.getSeverityName(replyId);
+  sessionManager.setData(from, 'selectedSeverity', severityName);
+  
+  await whatsappService.sendTextMessage(from, 
+    `*Priority Level:* ${severityName}\n\nNow, please describe your complaint in detail. Be as specific as possible to help us address your concern effectively.`);
+  sessionManager.setState(from, 'department_complaint_input');
+}
+
 async function startDepartmentComplaintInput(from, userName) {
   const department = sessionManager.getData(from, 'selectedDepartment');
   
@@ -492,12 +542,16 @@ async function startDepartmentComplaintInput(from, userName) {
 
 async function handleDepartmentComplaint(from, complaintText, userName) {
   const department = sessionManager.getData(from, 'selectedDepartment');
+  const category = sessionManager.getData(from, 'selectedCategory');
+  const severity = sessionManager.getData(from, 'selectedSeverity');
   
   const summaryText = `*Department Complaint Summary*
 
 *Name:* ${userName}
 *Phone:* ${from}
 *Department:* ${department}
+*Category:* ${category}
+*Priority:* ${severity}
 
 *Complaint:*
 ${complaintText}
@@ -517,51 +571,43 @@ Please review and confirm to submit your complaint to the department.`;
 async function submitDepartmentComplaint(from, userName) {
   try {
     const department = sessionManager.getData(from, 'selectedDepartment');
+    const category = sessionManager.getData(from, 'selectedCategory');
+    const severity = sessionManager.getData(from, 'selectedSeverity');
     const complaintText = sessionManager.getData(from, 'complaintText');
     
+    // Enhanced complaint data structure to match the Firebase function
     const complaintData = {
-      name: userName,
-      phoneNumber: from,
+      title: `${category} - ${department}`,
+      description: complaintText,
+      category: category,
       department: department,
-      complaint: complaintText,
-      complaintType: 'department_specific',
-      developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
+      severity: severity,
+      studentName: userName,
+      studentPhone: from,
+      source: 'whatsapp_bot'
     };
 
-    // Save to Firebase
+    // Save to Firebase using the new addDepartmentComplaint function
     await saveDepartmentComplaint(complaintData);
 
     // Send confirmation to user
     await whatsappService.sendTextMessage(from, 
       `*Complaint Submitted Successfully!*
 
-Thank you ${userName}! Your complaint regarding ${department} has been submitted and forwarded to the department team.
+Thank you ${userName}! Your complaint regarding ${department} has been submitted and integrated with our main complaint management system.
 
 *What happens next?*
-• Your complaint will be reviewed by department representatives
-• The department team has been notified via SMS
+• Your complaint has been assigned to the appropriate department head
+• You'll receive updates on the status of your complaint
+• Department heads will review and take appropriate action
 • You may be contacted for follow-up within 2-3 business days
 
+*Complaint Details:*
+• Department: ${department}
+• Category: ${category}
+• Priority: ${severity}
+
 Thank you for helping us improve our services!`);
-
-    // Send to department phone
-    const departmentMessage = `*New Department Complaint*
-
-*Department:* ${department}
-*Student:* ${userName}
-*Phone:* ${from}
-
-*Complaint:*
-${complaintText}
-
-*Submitted:* ${new Date().toLocaleString()}
-
-Please review and take appropriate action.
-
-_Christ University Student Wellness System_`;
-
-    // Send to specific phone number: 919741301245 (correct WhatsApp API format)
-    await whatsappService.sendTextMessage('919741301245', departmentMessage);
 
     // Reset session
     sessionManager.clearSession(from);
@@ -572,7 +618,7 @@ _Christ University Student Wellness System_`;
     }, 2000);
 
   } catch (error) {
-    console.error('Error submitting department complaint (Developer: Gebin George):', error);
+    console.error('Error submitting department complaint:', error);
     await whatsappService.sendTextMessage(from, 
       "Sorry, there was an error submitting your complaint. Please try again later or contact support.");
   }
