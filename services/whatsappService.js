@@ -7,14 +7,44 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
 // Initialize Firebase Admin (if not already initialized)
 if (admin.apps.length === 0) {
-  const serviceAccount = require('../firebaseServiceAccount.json');
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: process.env.FIREBASE_DATABASE_URL
-  });
+  try {
+    // Try to use environment variables first (for production deployment)
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+      console.log('🔧 Initializing Firebase Admin with environment variables...');
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          type: "service_account",
+          project_id: process.env.FIREBASE_PROJECT_ID,
+          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+          private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          client_email: process.env.FIREBASE_CLIENT_EMAIL,
+          client_id: process.env.FIREBASE_CLIENT_ID,
+          auth_uri: "https://accounts.google.com/o/oauth2/auth",
+          token_uri: "https://oauth2.googleapis.com/token",
+          auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+          client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(process.env.FIREBASE_CLIENT_EMAIL)}`
+        }),
+        databaseURL: process.env.FIREBASE_DATABASE_URL
+      });
+      console.log('✅ Firebase Admin initialized successfully with environment variables');
+    } else {
+      // Fallback to JSON file for local development
+      console.log('🔧 Attempting to use local service account file...');
+      const serviceAccount = require('../firebaseServiceAccount.json');
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL
+      });
+      console.log('✅ Firebase Admin initialized successfully with service account file');
+    }
+  } catch (error) {
+    console.error('❌ Failed to initialize Firebase Admin:', error.message);
+    console.log('⚠️ Running in demo mode without Firebase connectivity');
+    // Continue without Firebase for demo purposes
+  }
 }
 
-const db = admin.firestore();
+const db = admin.firestore ? admin.firestore() : null;
 
 class WhatsAppService {
   constructor() {
@@ -34,6 +64,14 @@ class WhatsAppService {
   async loadDepartmentsFromFirebase() {
     try {
       console.log('📋 Loading departments from Firebase...');
+      
+      // Check if Firebase is available
+      if (!db) {
+        console.log('⚠️ Firebase not available, using fallback departments');
+        this.loadDefaultDepartments();
+        return;
+      }
+      
       const departmentsSnapshot = await db.collection('departments')
         .where('isActive', '==', true)
         .orderBy('name')
@@ -287,6 +325,15 @@ Please reply with the number (1-4) that represents the urgency of your complaint
     try {
       console.log('📝 Submitting department complaint to Firebase...');
       
+      // Check if Firebase is available
+      if (!db) {
+        console.log('⚠️ Firebase not available - complaint logged locally');
+        // In production, you might want to queue this for later processing
+        const mockId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log('📋 Local complaint logged:', complaintData);
+        return mockId;
+      }
+      
       const complaint = {
         title: complaintData.title,
         description: complaintData.description,
@@ -320,6 +367,17 @@ Please reply with the number (1-4) that represents the urgency of your complaint
   async submitAnonymousComplaint(complaintData) {
     try {
       console.log('🔒 Submitting anonymous complaint to Firebase...');
+      
+      // Check if Firebase is available
+      if (!db) {
+        console.log('⚠️ Firebase not available - complaint logged locally');
+        const mockId = `anon_local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log('📋 Local anonymous complaint logged:', {
+          ...complaintData,
+          studentPhone: '[HIDDEN]' // Don't log the actual phone number
+        });
+        return mockId;
+      }
       
       const complaint = {
         title: complaintData.title,
@@ -428,47 +486,57 @@ Please log into the admin portal to review and respond to this complaint.
   startComplaintStatusListener() {
     console.log('👂 Starting complaint status listeners...');
 
-    // Listen for department complaint updates
-    const deptComplaintsRef = db.collection('departmentComplaints');
-    deptComplaintsRef.onSnapshot((snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'modified') {
-          const complaint = change.doc.data();
-          const complaintId = change.doc.id;
-          
-          if (complaint.studentPhone) {
-            this.sendStatusUpdateToStudent(
-              complaint.studentPhone,
-              complaint,
-              complaint.status,
-              complaint.resolutionNotes || complaint.adminNotes || ''
-            );
-          }
-        }
-      });
-    });
+    // Check if Firebase is available
+    if (!db) {
+      console.log('⚠️ Firebase not available - status listeners disabled');
+      return;
+    }
 
-    // Listen for anonymous complaint updates
-    const anonComplaintsRef = db.collection('anonymousComplaints');
-    anonComplaintsRef.onSnapshot((snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'modified') {
-          const complaint = change.doc.data();
-          const complaintId = change.doc.id;
-          
-          if (complaint._studentPhone) {
-            this.sendStatusUpdateToStudent(
-              complaint._studentPhone,
-              complaint,
-              complaint.status,
-              complaint.resolutionNotes || complaint.adminNotes || ''
-            );
+    try {
+      // Listen for department complaint updates
+      const deptComplaintsRef = db.collection('departmentComplaints');
+      deptComplaintsRef.onSnapshot((snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'modified') {
+            const complaint = change.doc.data();
+            const complaintId = change.doc.id;
+            
+            if (complaint.studentPhone) {
+              this.sendStatusUpdateToStudent(
+                complaint.studentPhone,
+                complaint,
+                complaint.status,
+                complaint.resolutionNotes || complaint.adminNotes || ''
+              );
+            }
           }
-        }
+        });
       });
-    });
 
-    console.log('✅ Complaint status listeners started');
+      // Listen for anonymous complaint updates
+      const anonComplaintsRef = db.collection('anonymousComplaints');
+      anonComplaintsRef.onSnapshot((snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'modified') {
+            const complaint = change.doc.data();
+            const complaintId = change.doc.id;
+            
+            if (complaint._studentPhone) {
+              this.sendStatusUpdateToStudent(
+                complaint._studentPhone,
+                complaint,
+                complaint.status,
+                complaint.resolutionNotes || complaint.adminNotes || ''
+              );
+            }
+          }
+        });
+      });
+
+      console.log('✅ Complaint status listeners started');
+    } catch (error) {
+      console.error('❌ Error starting status listeners:', error);
+    }
   }
 
   // =================== MESSAGE PROCESSING ===================
