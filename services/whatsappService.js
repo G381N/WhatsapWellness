@@ -204,17 +204,92 @@ Please select an option from the menu below:`;
   async sendDepartmentSelection(to) {
     const sections = [
       {
-        title: "School of Sciences",
+        title: "Engineering",
         rows: [
           {
-            id: "dept_mca",
-            title: "MCA",
-            description: "Master of Computer Applications"
+            id: "dept_cse",
+            title: "Computer Science",
+            description: "Computer Science & Engineering"
           },
           {
-            id: "dept_msc_aiml",
-            title: "MSC AIML",
-            description: "MSc Artificial Intelligence & Machine Learning"
+            id: "dept_ece",
+            title: "Electronics",
+            description: "Electronics & Communication"
+          },
+          {
+            id: "dept_mech",
+            title: "Mechanical",
+            description: "Mechanical Engineering"
+          },
+          {
+            id: "dept_civil",
+            title: "Civil",
+            description: "Civil Engineering"
+          }
+        ]
+      },
+      {
+        title: "Business & Commerce",
+        rows: [
+          {
+            id: "dept_bba",
+            title: "Business Admin",
+            description: "Business Administration"
+          },
+          {
+            id: "dept_commerce",
+            title: "Commerce",
+            description: "Commerce Department"
+          }
+        ]
+      },
+      {
+        title: "Health Sciences",
+        rows: [
+          {
+            id: "dept_medicine",
+            title: "Medicine",
+            description: "Medical Department"
+          },
+          {
+            id: "dept_nursing",
+            title: "Nursing",
+            description: "Nursing Department"
+          },
+          {
+            id: "dept_physio",
+            title: "Physiotherapy",
+            description: "Physiotherapy Department"
+          },
+          {
+            id: "dept_pharmacy",
+            title: "Pharmacy",
+            description: "Pharmacy Department"
+          }
+        ]
+      },
+      {
+        title: "Liberal Arts",
+        rows: [
+          {
+            id: "dept_psychology",
+            title: "Psychology",
+            description: "Psychology Department"
+          },
+          {
+            id: "dept_social_work",
+            title: "Social Work",
+            description: "Social Work Department"
+          },
+          {
+            id: "dept_arts",
+            title: "Arts & Humanities",
+            description: "Arts & Humanities"
+          },
+          {
+            id: "dept_law",
+            title: "Law",
+            description: "Law Department"
           }
         ]
       }
@@ -226,6 +301,164 @@ Please select an option from the menu below:`;
       "Choose Department",
       sections
     );
+  }
+
+  // Send complaint category selection
+  async sendComplaintCategorySelection(to) {
+    const sections = [
+      {
+        title: "Academic Issues",
+        rows: [
+          {
+            id: "cat_academic",
+            title: "Academic Issues",
+            description: "Course, curriculum, or academic concerns"
+          },
+          {
+            id: "cat_faculty",
+            title: "Faculty Concerns",
+            description: "Issues related to faculty or teaching"
+          },
+          {
+            id: "cat_examination",
+            title: "Examination Issues",
+            description: "Problems with exams or evaluation"
+          }
+        ]
+      },
+      {
+        title: "Infrastructure & Services",
+        rows: [
+          {
+            id: "cat_infrastructure",
+            title: "Infrastructure",
+            description: "Buildings, facilities, or equipment issues"
+          },
+          {
+            id: "cat_library",
+            title: "Library Issues",
+            description: "Library services or resources"
+          },
+          {
+            id: "cat_canteen",
+            title: "Canteen/Food",
+            description: "Food quality or canteen services"
+          },
+          {
+            id: "cat_transport",
+            title: "Transport Issues",
+            description: "College transportation problems"
+          }
+        ]
+      },
+      {
+        title: "Administrative & Others",
+        rows: [
+          {
+            id: "cat_admin",
+            title: "Administrative",
+            description: "Administrative processes or staff"
+          },
+          {
+            id: "cat_fees",
+            title: "Fee/Financial",
+            description: "Fee payment or financial issues"
+          },
+          {
+            id: "cat_harassment",
+            title: "Harassment/Safety",
+            description: "Harassment, discrimination, or safety"
+          },
+          {
+            id: "cat_hostel",
+            title: "Hostel Issues",
+            description: "Hostel facilities or services"
+          },
+          {
+            id: "cat_other",
+            title: "Other",
+            description: "Any other concerns"
+          }
+        ]
+      }
+    ];
+
+    return await this.sendListMessage(
+      to,
+      "Please select the category that best describes your complaint:",
+      "Choose Category",
+      sections
+    );
+  }
+
+  // Send severity selection
+  async sendSeveritySelection(to) {
+    const buttons = [
+      { id: "severity_low", title: "Low Priority" },
+      { id: "severity_medium", title: "Medium Priority" },
+      { id: "severity_high", title: "High Priority" },
+      { id: "severity_critical", title: "Critical/Urgent" }
+    ];
+
+    return await this.sendButtonMessage(
+      to,
+      "How urgent is this complaint?\n\nPlease select the priority level:",
+      buttons
+    );
+  }
+
+  // Get department name from ID
+  getDepartmentNameFromId(deptId) {
+    const departmentMap = {
+      'dept_cse': 'Computer Science & Engineering',
+      'dept_ece': 'Electronics & Communication',
+      'dept_mech': 'Mechanical Engineering',
+      'dept_civil': 'Civil Engineering',
+      'dept_bba': 'Business Administration',
+      'dept_commerce': 'Commerce',
+      'dept_medicine': 'Medicine',
+      'dept_nursing': 'Nursing',
+      'dept_physio': 'Physiotherapy',
+      'dept_pharmacy': 'Pharmacy',
+      'dept_psychology': 'Psychology',
+      'dept_social_work': 'Social Work',
+      'dept_arts': 'Arts & Humanities',
+      'dept_law': 'Law'
+    };
+    
+    return departmentMap[deptId] || 'Unknown Department';
+  }
+
+  // Get category name from ID
+  getCategoryNameFromId(catId) {
+    const categoryMap = {
+      'cat_academic': 'Academic Issues',
+      'cat_faculty': 'Faculty Concerns',
+      'cat_examination': 'Examination Problems',
+      'cat_infrastructure': 'Infrastructure Problems',
+      'cat_library': 'Library Issues',
+      'cat_canteen': 'Canteen/Food Issues',
+      'cat_transport': 'Transport Issues',
+      'cat_admin': 'Administrative Issues',
+      'cat_fees': 'Fee/Financial Issues',
+      'cat_harassment': 'Harassment/Discrimination',
+      'cat_hostel': 'Hostel Issues',
+      'cat_other': 'Other'
+    };
+    
+    return categoryMap[catId] || 'Other';
+  }
+
+  // Get severity name from ID
+  getSeverityNameFromId(severityId) {
+    const severityMap = {
+      'severity_low': 'Low',
+      'severity_medium': 'Medium',
+      'severity_high': 'High',
+      'severity_critical': 'Critical'
+    };
+    
+    return severityMap[severityId] || 'Medium';
   }
 }
 
