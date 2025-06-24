@@ -8,11 +8,11 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "axios": "^1.6.0",
-    "firebase-admin": "^12.0.0",
-    "dotenv": "^16.3.1",
+    "axios": "^1.10.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.21.2",
+    "firebase-admin": "^12.7.0",
     "helmet": "^7.1.0"
   },
   "devDependencies": {
@@ -21,7 +21,12 @@
   "engines": {
     "node": ">=16.0.0"
   },
-  "keywords": ["whatsapp", "chatbot", "mental-health", "wellness"],
+  "keywords": [
+    "whatsapp",
+    "chatbot",
+    "mental-health",
+    "wellness"
+  ],
   "author": "Christ University",
   "license": "MIT"
-} 
+}
