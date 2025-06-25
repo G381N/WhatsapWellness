@@ -494,19 +494,23 @@ Thank you for helping us improve our university environment.`);
 }
 
 async function startDepartmentComplaintFlow(from, userName) {
-  await whatsappService.sendTextMessage(from, 
-    "*Department Complaints*\n\nPlease select your department from the list below:");
   await whatsappService.sendDepartmentSelection(from);
   sessionManager.setState(from, 'department_selection');
 }
 
 async function handleDepartmentSelectionResponse(from, replyId, userName) {
   const departmentName = whatsappService.getDepartmentName(replyId);
+  const contactInfo = whatsappService.getDepartmentContact(replyId);
   sessionManager.setData(from, 'selectedDepartment', departmentName);
   sessionManager.setData(from, 'selectedDepartmentId', replyId);
   
   await whatsappService.sendTextMessage(from, 
-    `*Department Selected:* ${departmentName}\n\nNow, please select the category that best describes your complaint:`);
+    `*Department Selected:* ${departmentName}
+
+*Department Contact Information:*
+${contactInfo}
+
+Your complaint will be directed to the department head shown above. Now, please select the category that best describes your complaint:`);
   await whatsappService.sendComplaintCategorySelection(from);
   sessionManager.setState(from, 'category_selection');
 }

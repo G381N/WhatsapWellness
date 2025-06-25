@@ -64,6 +64,7 @@ class WhatsAppService {
     };
     this.conversationStates = new Map();
     this.departmentMapping = new Map();
+    this.departmentHeadMapping = new Map();
     this.loadDepartmentsFromFirebase();
   }
 
@@ -200,29 +201,38 @@ Select a service:`;
   // =================== DEPARTMENT MANAGEMENT ===================
 
   loadDefaultDepartments() {
-    console.log('⚠️ Using fallback departments...');
+    this.departmentMapping.clear();
+    this.departmentHeadMapping.clear();
+    
     const defaultDepartments = [
-      { id: 'dept_cs', name: 'Computer Science', category: 'Engineering' },
-      { id: 'dept_ece', name: 'Electronics & Comm', category: 'Engineering' },
-      { id: 'dept_mech', name: 'Mechanical Eng', category: 'Engineering' },
+      { id: 'dept_cs', name: 'Computer Science & Engineering', category: 'Engineering' },
+      { id: 'dept_ece', name: 'Electronics & Communication', category: 'Engineering' },
+      { id: 'dept_mech', name: 'Mechanical Engineering', category: 'Engineering' },
       { id: 'dept_civil', name: 'Civil Engineering', category: 'Engineering' },
-      { id: 'dept_bba', name: 'Business Admin', category: 'Business' },
+      { id: 'dept_bba', name: 'Business Administration', category: 'Business' },
       { id: 'dept_bcom', name: 'Commerce', category: 'Business' },
       { id: 'dept_nursing', name: 'Nursing', category: 'Health Sciences' },
-      { id: 'dept_pharmacy', name: 'Pharmacy', category: 'Health Sciences' },
       { id: 'dept_psychology', name: 'Psychology', category: 'Liberal Arts' },
-      { id: 'dept_english', name: 'English Literature', category: 'Liberal Arts' }
+      { id: 'dept_social_work', name: 'Social Work', category: 'Liberal Arts' },
+      { id: 'dept_law', name: 'Law', category: 'Liberal Arts' }
     ];
 
-    this.departmentMapping.clear();
     defaultDepartments.forEach(dept => {
       this.departmentMapping.set(dept.id, dept);
+      // Add placeholder contact info for demo
+      this.departmentHeadMapping.set(dept.id, {
+        name: `HOD ${dept.name.split(' ')[0]}`,
+        email: `hod.${dept.id.replace('dept_', '')}@christ.edu.in`,
+        phone: '+91-XXXXXXXXXX'
+      });
     });
+
+    console.log(`📋 Loaded ${this.departmentMapping.size} default departments`);
   }
 
   async loadDepartmentsFromFirebase() {
     try {
-      console.log('📋 Loading departments from Firebase...');
+      console.log('📋 Loading departments and department heads from Firebase...');
       
       if (!db) {
         console.log('⚠️ Firebase not available, using fallback departments');
@@ -230,12 +240,13 @@ Select a service:`;
         return;
       }
       
-      // Simplified query without ordering to avoid index requirement
+      // Load departments
       const departmentsSnapshot = await db.collection('departments')
         .where('isActive', '==', true)
         .get();
 
       this.departmentMapping.clear();
+      this.departmentHeadMapping.clear();
       
       departmentsSnapshot.forEach((doc) => {
         const department = doc.data();
@@ -247,47 +258,113 @@ Select a service:`;
         });
       });
 
-      console.log(`✅ Loaded ${this.departmentMapping.size} departments from Firebase`);
+      // Load department heads
+      const departmentHeadsSnapshot = await db.collection('departmentHeads')
+        .where('isActive', '==', true)
+        .get();
+
+      departmentHeadsSnapshot.forEach((doc) => {
+        const head = doc.data();
+        this.departmentHeadMapping.set(head.departmentId, {
+          name: head.name,
+          email: head.email,
+          phone: head.phoneNumber || 'Contact via email'
+        });
+      });
+
+      console.log(`✅ Loaded ${this.departmentMapping.size} departments and ${this.departmentHeadMapping.size} department heads from Firebase`);
       
       // Fallback to default if no departments found
       if (this.departmentMapping.size === 0) {
         this.loadDefaultDepartments();
       }
     } catch (error) {
-      console.error('❌ Error loading departments from Firebase:', error);
+      console.error('❌ Error loading data from Firebase:', error);
       this.loadDefaultDepartments();
     }
   }
 
   async sendDepartmentSelection(to) {
-    // Always use hardcoded departments for now to avoid Firebase issues
-    this.loadDefaultDepartments();
+    // Load fresh data from Firebase when possible
+    await this.loadDepartmentsFromFirebase();
 
     const message = `🏛️ *Select Your Department*
 
-Please choose your department:`;
+Please choose your department to proceed with your complaint:`;
 
-    // Create simple sections with shorter names
-    const sections = [
-      {
-        title: "Engineering",
-        rows: [
-          { id: 'dept_cs', title: 'Computer Science', description: 'CS & IT Department' },
-          { id: 'dept_ece', title: 'Electronics', description: 'ECE Department' },
-          { id: 'dept_mech', title: 'Mechanical', description: 'Mechanical Engineering' },
-          { id: 'dept_civil', title: 'Civil', description: 'Civil Engineering' }
-        ]
-      },
-      {
-        title: "Business & Others",
-        rows: [
-          { id: 'dept_bba', title: 'Business Admin', description: 'BBA Department' },
-          { id: 'dept_bcom', title: 'Commerce', description: 'B.Com Department' },
-          { id: 'dept_nursing', title: 'Nursing', description: 'Nursing Department' },
-          { id: 'dept_psychology', title: 'Psychology', description: 'Psychology Department' }
-        ]
+    // Group departments by category and include contact info
+    const engineeringRows = [];
+    const businessRows = [];
+    const healthRows = [];
+    const artsRows = [];
+
+    for (const [deptId, dept] of this.departmentMapping) {
+      const head = this.departmentHeadMapping.get(deptId);
+      const contactInfo = head ? `📞 ${head.phone}` : 'Contact info available';
+      
+      const shortName = dept.name.length > 20 ? 
+        dept.name.substring(0, 17) + '...' : dept.name;
+      
+      const row = {
+        id: deptId,
+        title: shortName,
+        description: contactInfo
+      };
+
+      switch (dept.category) {
+        case 'Engineering':
+          engineeringRows.push(row);
+          break;
+        case 'Business':
+        case 'Business & Commerce':
+          businessRows.push(row);
+          break;
+        case 'Health Sciences':
+          healthRows.push(row);
+          break;
+        default:
+          artsRows.push(row);
       }
-    ];
+    }
+
+    const sections = [];
+    
+    if (engineeringRows.length > 0) {
+      sections.push({ title: "Engineering", rows: engineeringRows });
+    }
+    if (businessRows.length > 0) {
+      sections.push({ title: "Business & Commerce", rows: businessRows });
+    }
+    if (healthRows.length > 0) {
+      sections.push({ title: "Health Sciences", rows: healthRows });
+    }
+    if (artsRows.length > 0) {
+      sections.push({ title: "Arts & Humanities", rows: artsRows });
+    }
+
+    // Fallback to hardcoded departments if no Firebase data
+    if (sections.length === 0) {
+      sections.push(
+        {
+          title: "Engineering",
+          rows: [
+            { id: 'dept_cs', title: 'Computer Science', description: '📞 +91-XXXXXXXXXX' },
+            { id: 'dept_ece', title: 'Electronics', description: '📞 +91-XXXXXXXXXX' },
+            { id: 'dept_mech', title: 'Mechanical', description: '📞 +91-XXXXXXXXXX' },
+            { id: 'dept_civil', title: 'Civil', description: '📞 +91-XXXXXXXXXX' }
+          ]
+        },
+        {
+          title: "Business & Others",
+          rows: [
+            { id: 'dept_bba', title: 'Business Admin', description: '📞 +91-XXXXXXXXXX' },
+            { id: 'dept_bcom', title: 'Commerce', description: '📞 +91-XXXXXXXXXX' },
+            { id: 'dept_nursing', title: 'Nursing', description: '📞 +91-XXXXXXXXXX' },
+            { id: 'dept_psychology', title: 'Psychology', description: '📞 +91-XXXXXXXXXX' }
+          ]
+        }
+      );
+    }
 
     await this.sendListMessage(to, message, "Choose Department", sections);
   }
@@ -295,6 +372,14 @@ Please choose your department:`;
   getDepartmentName(departmentId) {
     const department = this.departmentMapping.get(departmentId);
     return department ? department.name : 'Unknown Department';
+  }
+
+  getDepartmentContact(departmentId) {
+    const head = this.departmentHeadMapping.get(departmentId);
+    if (head) {
+      return `*Department Head:* ${head.name}\n*Email:* ${head.email}\n*Phone:* ${head.phone}`;
+    }
+    return 'Contact information will be provided by the department.';
   }
 
   // =================== COMPLAINT CATEGORIES ===================
@@ -398,6 +483,7 @@ How urgent is this issue?`;
   getStats() {
     return {
       departmentsLoaded: this.departmentMapping.size,
+      departmentHeadsLoaded: this.departmentHeadMapping.size,
       firebaseConnected: !!db
     };
   }
