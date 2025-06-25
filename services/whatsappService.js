@@ -217,17 +217,76 @@ Select a service:`;
       { id: 'dept_law', name: 'Law', category: 'Liberal Arts' }
     ];
 
+    // SAFE: All department heads now use your number for testing
+    const departmentHeads = {
+      'dept_cs': {
+        name: 'Dr. Rajesh Kumar',
+        email: 'hod.cse@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Block A, Room 301'
+      },
+      'dept_ece': {
+        name: 'Dr. Priya Sharma',
+        email: 'hod.ece@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Block B, Room 201'
+      },
+      'dept_mech': {
+        name: 'Dr. Suresh Nair',
+        email: 'hod.mech@christuniversity.in', 
+        phone: '+919741301245',
+        office: 'Block C, Room 101'
+      },
+      'dept_civil': {
+        name: 'Dr. Meera Reddy',
+        email: 'hod.civil@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Block D, Room 205'
+      },
+      'dept_bba': {
+        name: 'Dr. Arun Gupta',
+        email: 'hod.bba@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Management Block, Room 301'
+      },
+      'dept_bcom': {
+        name: 'Dr. Kavitha Menon',
+        email: 'hod.bcom@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Commerce Block, Room 201'
+      },
+      'dept_nursing': {
+        name: 'Dr. Sunita Thomas',
+        email: 'hod.nursing@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Health Sciences Block, Room 101'
+      },
+      'dept_psychology': {
+        name: 'Dr. Rohit Joshi',
+        email: 'hod.psychology@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Liberal Arts Block, Room 302'
+      },
+      'dept_social_work': {
+        name: 'Dr. Anjali Verma',
+        email: 'hod.socialwork@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Liberal Arts Block, Room 201'
+      },
+      'dept_law': {
+        name: 'Dr. Vikram Singh',
+        email: 'hod.law@christuniversity.in',
+        phone: '+919741301245',
+        office: 'Law Block, Room 401'
+      }
+    };
+
     defaultDepartments.forEach(dept => {
       this.departmentMapping.set(dept.id, dept);
-      // Add placeholder contact info for demo
-      this.departmentHeadMapping.set(dept.id, {
-        name: `HOD ${dept.name.split(' ')[0]}`,
-        email: `hod.${dept.id.replace('dept_', '')}@christ.edu.in`,
-        phone: '+91-XXXXXXXXXX'
-      });
+      this.departmentHeadMapping.set(dept.id, departmentHeads[dept.id]);
     });
 
-    console.log(`📋 Loaded ${this.departmentMapping.size} default departments`);
+    console.log(`📋 Loaded ${this.departmentMapping.size} default departments with safe phone numbers`);
   }
 
   async loadDepartmentsFromFirebase() {
@@ -268,7 +327,8 @@ Select a service:`;
         this.departmentHeadMapping.set(head.departmentId, {
           name: head.name,
           email: head.email,
-          phone: head.phoneNumber || 'Contact via email'
+          phone: head.phoneNumber || '+919741301245', // Default to your number for safety
+          office: head.office || 'Contact department office'
         });
       });
 
@@ -348,19 +408,19 @@ Please choose your department to proceed with your complaint:`;
         {
           title: "Engineering",
           rows: [
-            { id: 'dept_cs', title: 'Computer Science', description: '📞 +91-XXXXXXXXXX' },
-            { id: 'dept_ece', title: 'Electronics', description: '📞 +91-XXXXXXXXXX' },
-            { id: 'dept_mech', title: 'Mechanical', description: '📞 +91-XXXXXXXXXX' },
-            { id: 'dept_civil', title: 'Civil', description: '📞 +91-XXXXXXXXXX' }
+            { id: 'dept_cs', title: 'Computer Science', description: '📞 +919741301245' },
+            { id: 'dept_ece', title: 'Electronics', description: '📞 +919741301245' },
+            { id: 'dept_mech', title: 'Mechanical', description: '📞 +919741301245' },
+            { id: 'dept_civil', title: 'Civil', description: '📞 +919741301245' }
           ]
         },
         {
           title: "Business & Others",
           rows: [
-            { id: 'dept_bba', title: 'Business Admin', description: '📞 +91-XXXXXXXXXX' },
-            { id: 'dept_bcom', title: 'Commerce', description: '📞 +91-XXXXXXXXXX' },
-            { id: 'dept_nursing', title: 'Nursing', description: '📞 +91-XXXXXXXXXX' },
-            { id: 'dept_psychology', title: 'Psychology', description: '📞 +91-XXXXXXXXXX' }
+            { id: 'dept_bba', title: 'Business Admin', description: '📞 +919741301245' },
+            { id: 'dept_bcom', title: 'Commerce', description: '📞 +919741301245' },
+            { id: 'dept_nursing', title: 'Nursing', description: '📞 +919741301245' },
+            { id: 'dept_psychology', title: 'Psychology', description: '📞 +919741301245' }
           ]
         }
       );
@@ -377,19 +437,36 @@ Please choose your department to proceed with your complaint:`;
   getDepartmentContact(departmentId) {
     const head = this.departmentHeadMapping.get(departmentId);
     if (head) {
-      // Format phone number for WhatsApp display
-      let phoneDisplay = head.phone;
-      if (phoneDisplay && phoneDisplay !== 'Contact via email' && phoneDisplay !== '+91-XXXXXXXXXX') {
-        // Ensure proper formatting for display
-        if (!phoneDisplay.startsWith('+')) {
-          phoneDisplay = '+' + phoneDisplay;
-        }
-        return `*Department Head:* ${head.name}\n*Email:* ${head.email}\n*Phone:* ${phoneDisplay}`;
-      } else {
-        return `*Department Head:* ${head.name}\n*Email:* ${head.email}\n*Phone:* Contact via email or department office`;
+      let contactInfo = `*Department Head:* ${head.name}\n*Email:* ${head.email}`;
+      
+      if (head.office) {
+        contactInfo += `\n*Office:* ${head.office}`;
       }
+      
+      if (head.phone) {
+        contactInfo += `\n*Phone:* ${head.phone}`;
+      } else {
+        contactInfo += `\n*Phone:* Contact via email or department office`;
+      }
+      
+      return contactInfo;
     }
     return 'Contact information will be provided by the department upon complaint submission.';
+  }
+
+  getDepartmentHeadPhone(departmentId) {
+    const head = this.departmentHeadMapping.get(departmentId);
+    if (head && head.phone) {
+      let phone = head.phone;
+      // Format phone number for WhatsApp
+      if (!phone.startsWith('+')) {
+        phone = '+' + phone;
+      }
+      // Remove any non-digit characters except +
+      phone = phone.replace(/[^\d+]/g, '');
+      return phone;
+    }
+    return '+919741301245'; // Default to your number for safety
   }
 
   // =================== COMPLAINT CATEGORIES ===================

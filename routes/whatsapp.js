@@ -212,7 +212,7 @@ async function handleInteractiveMessage(from, interactive, userName) {
         const studentPhone = replyId.replace('message_student_', '');
         await handleCounselorMessageStudent(from, studentPhone);
       } else {
-        await whatsappService.sendMainMenu(from);
+      await whatsappService.sendMainMenu(from);
       }
   }
 }
@@ -285,7 +285,7 @@ async function handleCounselorQuestionnaire(from, messageText, userName) {
         await whatsappService.sendListMessage(from, nextQuestion.question, "Choose Option", sections);
       } else {
         // Send text question for descriptive answers
-        await whatsappService.sendTextMessage(from, nextQuestion.question);
+      await whatsappService.sendTextMessage(from, nextQuestion.question);
       }
     } else {
       // Questionnaire complete - show summary
@@ -518,63 +518,106 @@ async function startDepartmentComplaintFlow(from, userName) {
 }
 
 async function handleDepartmentSelectionResponse(from, replyId, userName) {
-  const departmentName = whatsappService.getDepartmentName(replyId);
-  const contactInfo = whatsappService.getDepartmentContact(replyId);
-  
-  // Store both department name and ID
-  sessionManager.setData(from, 'selectedDepartment', departmentName);
-  sessionManager.setData(from, 'selectedDepartmentId', replyId);
-  
-  await whatsappService.sendTextMessage(from, 
-    `*Department Selected:* ${departmentName}
+  try {
+    const departmentName = whatsappService.getDepartmentName(replyId);
+    const contactInfo = whatsappService.getDepartmentContact(replyId);
+    
+    // Store both department name and ID
+    sessionManager.setData(from, 'selectedDepartment', departmentName);
+    sessionManager.setData(from, 'selectedDepartmentId', replyId);
+    sessionManager.setData(from, 'userName', userName);
+    sessionManager.setData(from, 'phoneNumber', from);
+    
+    const message = `*🏛️ Department Selected: ${departmentName}*
 
-*Department Contact Information:*
+*📞 Department Contact Information:*
 ${contactInfo}
 
-Your complaint will be directed to the department head shown above.
+*📝 Complaint Submission Process:*
+
+Your complaint will be submitted to the Christ University Student Wellness System and automatically forwarded to the department head shown above.
 
 *Please describe your issue in detail:*
 
-Include relevant information such as:
-• Specific situation or incident
-• When it occurred  
-• Any steps you've already taken
-• Expected resolution
+Include the following information:
+• 📋 Specific situation or incident
+• 📅 When it occurred
+• 📍 Location (if applicable)
+• 🔧 Any steps you've already taken
+• 🎯 Expected resolution or outcome
 
-Please type your detailed complaint now:`);
-  
-  // Skip category and severity selection, go directly to complaint input
+*Note:* Your name (${userName}) and contact number (${from}) will be included with your complaint so the department can respond to you directly.
+
+Please type your detailed complaint description now:`;
+
+    await whatsappService.sendTextMessage(from, message);
+    
+    // Set state to handle complaint input
   sessionManager.setState(from, 'department_complaint_input');
+    
+  } catch (error) {
+    console.error('Error handling department selection:', error);
+    await whatsappService.sendTextMessage(from, 
+      `*❌ Error*\n\nSorry, there was an error processing your department selection. Please try again or type 'menu' to return to the main menu.`);
+  }
 }
 
 async function handleDepartmentComplaint(from, complaintText, userName) {
+  try {
   const department = sessionManager.getData(from, 'selectedDepartment');
-  const departmentId = sessionManager.getData(from, 'selectedDepartmentId');
-  
-  const summaryText = `*Department Complaint Summary*
+    const departmentId = sessionManager.getData(from, 'selectedDepartmentId');
+    const phoneNumber = sessionManager.getData(from, 'phoneNumber') || from;
+    
+    // Validate required data
+    if (!department || !departmentId || !complaintText.trim()) {
+      await whatsappService.sendTextMessage(from, 
+        `*❌ Missing Information*\n\nPlease provide a detailed description of your complaint. Type 'menu' to start over if needed.`);
+      return;
+    }
 
-*Student Information:*
+    // Format the complaint summary with proper WhatsApp formatting
+    const summaryText = `*📋 Department Complaint Summary*
+
+*👤 Student Information:*
 • Name: ${userName}
-• Contact: ${from}
+• Phone: ${phoneNumber}
+• WhatsApp: ${from}
 
-*Department:* ${department}
+*🏛️ Selected Department:*
+${department}
 
-*Complaint Description:*
+*📝 Complaint Description:*
 ${complaintText}
 
-*Important Notice:*
-Your complaint will be submitted to the Christ University Student Wellness System and forwarded to the relevant department head for review and resolution.
+*⚠️ Important Notice:*
+Your complaint will be:
+✅ Submitted to the Christ University Student Wellness System
+✅ Forwarded to the ${department} department head
+✅ Tracked with a unique reference number
+✅ Updated with progress notifications
 
-Please review the above information and confirm submission:`;
+*📞 Department Contact:*
+${whatsappService.getDepartmentContact(departmentId)}
+
+Please review the information above and confirm submission:`;
 
   const buttons = [
     { id: 'confirm_department_complaint', title: '✅ Submit Complaint' },
-    { id: 'cancel_complaint', title: '❌ Cancel' }
+      { id: 'cancel_complaint', title: '❌ Cancel & Return' }
   ];
 
+    // Store complaint data for submission
   sessionManager.setData(from, 'complaintText', complaintText);
+    sessionManager.setData(from, 'complaintSummary', summaryText);
+    
   await whatsappService.sendButtonMessage(from, summaryText, buttons);
   sessionManager.setState(from, 'department_complaint_confirm');
+    
+  } catch (error) {
+    console.error('Error handling department complaint:', error);
+    await whatsappService.sendTextMessage(from, 
+      `*❌ Error*\n\nSorry, there was an error processing your complaint. Please try again or contact support.`);
+  }
 }
 
 async function submitDepartmentComplaint(from, userName) {
@@ -582,52 +625,92 @@ async function submitDepartmentComplaint(from, userName) {
     const department = sessionManager.getData(from, 'selectedDepartment');
     const departmentId = sessionManager.getData(from, 'selectedDepartmentId');
     const complaintText = sessionManager.getData(from, 'complaintText');
+    const phoneNumber = sessionManager.getData(from, 'phoneNumber') || from;
     
-    // Enhanced complaint data structure to match the Firebase function exactly
+    // Validate all required data
+    if (!department || !departmentId || !complaintText || !userName) {
+      await whatsappService.sendTextMessage(from, 
+        `*❌ Submission Error*\n\nMissing required information. Please start over by typing 'menu'.`);
+      return;
+    }
+
+    // Create comprehensive complaint data
     const complaintData = {
-      title: `Department Complaint - ${department}`,
+      title: `${department} - Student Complaint`,
       description: complaintText,
-      category: 'General', // Default category since we removed category selection
+      category: 'General Complaint',
       department: department,
       departmentId: departmentId,
-      severity: 'Medium', // Default severity since we removed severity selection
+      severity: 'Medium',
       studentName: userName,
-      studentPhone: from, // Will be formatted in Firebase function
-      source: 'whatsapp_bot'
+      studentPhone: phoneNumber,
+      whatsappNumber: from,
+      source: 'whatsapp_bot',
+      submissionTime: new Date().toISOString(),
+      contactMethod: 'WhatsApp Bot'
     };
 
     // Save to Firebase
-    await saveDepartmentComplaint(complaintData);
+    const savedComplaint = await saveDepartmentComplaint(complaintData);
+    
+    // Generate reference number
+    const referenceNumber = `CU-${savedComplaint.id.substring(0, 8).toUpperCase()}`;
 
-    // Send formal confirmation to user
-    await whatsappService.sendTextMessage(from, 
-      `*✅ Complaint Submitted Successfully*
+    // Send detailed confirmation to student
+    const confirmationMessage = `*✅ Complaint Submitted Successfully*
 
 Dear ${userName},
 
 Your complaint has been successfully submitted to the Christ University Student Wellness System.
 
-*Complaint Reference:*
+*📋 Complaint Details:*
+• Reference: ${referenceNumber}
 • Department: ${department}
-• Submission Time: ${new Date().toLocaleString()}
+• Status: Pending Review
+• Submitted: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
 
-*Next Steps:*
-1️⃣ Your complaint has been forwarded to the ${department} department head
-2️⃣ You will receive status updates as your case progresses
-3️⃣ Department heads typically respond within 2-3 business days
-4️⃣ For urgent matters, you may also contact the department directly
+*📞 Your Contact Information:*
+• Name: ${userName}
+• Phone: ${phoneNumber}
+• WhatsApp: ${from}
 
-*Contact Information:*
+*🔄 What Happens Next:*
+1️⃣ Your complaint is now in the system
+2️⃣ Department head will receive notification
+3️⃣ You'll get status updates via WhatsApp
+4️⃣ Expected response: 2-3 business days
+5️⃣ For urgent matters, contact department directly
+
+*📞 Department Contact Information:*
 ${whatsappService.getDepartmentContact(departmentId)}
 
-Thank you for using the Christ University Student Wellness Support System. We are committed to addressing your concerns promptly and effectively.`);
+*📱 Stay Connected:*
+• You'll receive WhatsApp notifications for status updates
+• Type 'menu' anytime to access other services
+• Keep this reference number: ${referenceNumber}
 
-    // Reset session
+Thank you for using the Christ University Student Wellness Support System. We are committed to addressing your concerns promptly and effectively.`;
+
+    await whatsappService.sendTextMessage(from, confirmationMessage);
+
+    // Send notification to department head (if configured)
+    await sendDepartmentNotification(departmentId, {
+      studentName: userName,
+      studentPhone: phoneNumber,
+      whatsappNumber: from,
+      department: department,
+      complaintText: complaintText,
+      referenceNumber: referenceNumber,
+      submissionTime: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+    });
+
+    // Reset session and show menu
     sessionManager.clearSession(from);
     
     // Show main menu after a brief delay
     setTimeout(async () => {
-      await whatsappService.sendMainMenu(from);
+      await whatsappService.sendTextMessage(from, 
+        `*🎓 Christ University Wellness Portal*\n\nType 'menu' to access services or submit another complaint.`);
     }, 3000);
 
   } catch (error) {
@@ -635,11 +718,67 @@ Thank you for using the Christ University Student Wellness Support System. We ar
     await whatsappService.sendTextMessage(from, 
       `*❌ Submission Error*
 
-We apologize, but there was a technical issue submitting your complaint. Please try again in a few moments.
+We apologize, but there was a technical issue submitting your complaint.
 
-If the problem persists, please contact our technical support or visit the student wellness office directly.
+*Please try:*
+• Wait a moment and try again
+• Type 'menu' to restart the process
+• Contact technical support if the issue persists
+
+*Emergency Contact:*
+For urgent matters, please contact the department directly or visit the student wellness office.
 
 Thank you for your patience.`);
+  }
+}
+
+// New function to send notifications to department heads
+async function sendDepartmentNotification(departmentId, complaintInfo) {
+  try {
+    // Get department head contact information
+    const departmentContact = whatsappService.getDepartmentHeadPhone(departmentId);
+    
+    if (!departmentContact) {
+      console.log(`No WhatsApp contact found for department: ${departmentId}`);
+      return;
+    }
+
+    const notificationMessage = `*🚨 New Student Complaint Received*
+
+*📋 Complaint Details:*
+• Reference: ${complaintInfo.referenceNumber}
+• Department: ${complaintInfo.department}
+• Submitted: ${complaintInfo.submissionTime}
+
+*👤 Student Information:*
+• Name: ${complaintInfo.studentName}
+• Phone: ${complaintInfo.studentPhone}
+• WhatsApp: ${complaintInfo.whatsappNumber}
+
+*📝 Complaint Description:*
+${complaintInfo.complaintText}
+
+*🔄 Action Required:*
+1️⃣ Review the complaint details
+2️⃣ Contact the student if needed
+3️⃣ Update status in the wellness portal
+4️⃣ Student will receive automatic notifications
+
+*📱 Student Contact:*
+• Direct WhatsApp: https://wa.me/${complaintInfo.whatsappNumber.replace('+', '')}
+• Phone: ${complaintInfo.studentPhone}
+
+*💻 System Access:*
+Login to the Student Wellness Portal to manage this complaint and update its status.
+
+This is an automated notification from the Christ University Student Wellness System.`;
+
+    await whatsappService.sendTextMessage(departmentContact, notificationMessage);
+    console.log(`✅ Department notification sent to ${departmentContact} for complaint ${complaintInfo.referenceNumber}`);
+    
+  } catch (error) {
+    console.error('Error sending department notification:', error);
+    // Don't throw error to avoid blocking complaint submission
   }
 }
 
