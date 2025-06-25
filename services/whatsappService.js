@@ -162,42 +162,63 @@ class WhatsAppService {
   // =================== WELCOME & MENU MESSAGES ===================
 
   async sendWelcomeMessage(to, userName) {
-    const welcomeText = `🎓 *Welcome to Christ University Student Wellness Portal* 📱
+    const welcomeText = `🎓 *Welcome to Christ University Student Wellness Portal*
 
-Hello ${userName}! I'm here to help you with your wellness needs. Our portal offers:
+Hello ${userName || 'Student'}! 
 
-🧠 *Mental Health Support*
-📝 *Anonymous Complaints*
-🏛️ *Department Complaints*
-👥 *Community Connect*
-ℹ️ *Information & Help*
+Our portal offers support for:
+🧠 Mental Health Support
+📝 Anonymous Complaints  
+🏛️ Department Complaints
+👥 Community Connect
 
 What would you like to do today?`;
 
     const buttons = [
-      { id: 'connect_counselors', title: '🧠 Connect with Counselors' },
-      { id: 'anonymous_complaints', title: '📝 Anonymous Complaints' },
-      { id: 'department_complaints', title: '🏛️ Department Complaints' }
+      { id: 'counseling', title: '🧠 Counseling' },
+      { id: 'anonymous', title: '📝 Anonymous' },
+      { id: 'department', title: '🏛️ Department' }
     ];
 
     await this.sendButtonMessage(to, welcomeText, buttons);
   }
 
   async sendMainMenu(to) {
-    const menuText = `🎓 *Christ University Student Wellness Portal* 📱
+    const menuText = `🎓 *Christ University Wellness Portal*
 
 Select a service:`;
 
     const buttons = [
-      { id: 'connect_counselors', title: '🧠 Counseling Support' },
-      { id: 'anonymous_complaints', title: '📝 Anonymous Complaints' },
-      { id: 'department_complaints', title: '🏛️ Department Complaints' }
+      { id: 'counseling', title: '🧠 Counseling' },
+      { id: 'anonymous', title: '📝 Anonymous' },
+      { id: 'department', title: '🏛️ Department' }
     ];
 
     await this.sendButtonMessage(to, menuText, buttons);
   }
 
   // =================== DEPARTMENT MANAGEMENT ===================
+
+  loadDefaultDepartments() {
+    console.log('⚠️ Using fallback departments...');
+    const defaultDepartments = [
+      { id: 'dept_cs', name: 'Computer Science', category: 'Engineering' },
+      { id: 'dept_ece', name: 'Electronics & Comm', category: 'Engineering' },
+      { id: 'dept_mech', name: 'Mechanical Eng', category: 'Engineering' },
+      { id: 'dept_civil', name: 'Civil Engineering', category: 'Engineering' },
+      { id: 'dept_bba', name: 'Business Admin', category: 'Business' },
+      { id: 'dept_bcom', name: 'Commerce', category: 'Business' },
+      { id: 'dept_nursing', name: 'Nursing', category: 'Health Sciences' },
+      { id: 'dept_pharmacy', name: 'Pharmacy', category: 'Health Sciences' },
+      { id: 'dept_psychology', name: 'Psychology', category: 'Liberal Arts' },
+      { id: 'dept_english', name: 'English Literature', category: 'Liberal Arts' }
+    ];
+
+    this.departmentMapping.clear();
+    defaultDepartments.forEach(dept => {
+      this.departmentMapping.set(dept.id, dept);
+    });
+  }
 
   async loadDepartmentsFromFirebase() {
     try {
@@ -209,9 +230,9 @@ Select a service:`;
         return;
       }
       
+      // Simplified query without ordering to avoid index requirement
       const departmentsSnapshot = await db.collection('departments')
         .where('isActive', '==', true)
-        .orderBy('name')
         .get();
 
       this.departmentMapping.clear();
@@ -227,69 +248,46 @@ Select a service:`;
       });
 
       console.log(`✅ Loaded ${this.departmentMapping.size} departments from Firebase`);
+      
+      // Fallback to default if no departments found
+      if (this.departmentMapping.size === 0) {
+        this.loadDefaultDepartments();
+      }
     } catch (error) {
       console.error('❌ Error loading departments from Firebase:', error);
       this.loadDefaultDepartments();
     }
   }
 
-  loadDefaultDepartments() {
-    console.log('⚠️ Using fallback departments...');
-    const defaultDepartments = [
-      { id: 'dept_cs', name: 'Computer Science & Engineering', category: 'Engineering' },
-      { id: 'dept_ece', name: 'Electronics & Communication Engineering', category: 'Engineering' },
-      { id: 'dept_mech', name: 'Mechanical Engineering', category: 'Engineering' },
-      { id: 'dept_civil', name: 'Civil Engineering', category: 'Engineering' },
-      { id: 'dept_bba', name: 'Bachelor of Business Administration', category: 'Business & Commerce' },
-      { id: 'dept_bcom', name: 'Bachelor of Commerce', category: 'Business & Commerce' },
-      { id: 'dept_nursing', name: 'Nursing', category: 'Health Sciences' },
-      { id: 'dept_pharmacy', name: 'Pharmacy', category: 'Health Sciences' },
-      { id: 'dept_psychology', name: 'Psychology', category: 'Liberal Arts' },
-      { id: 'dept_english', name: 'English Literature', category: 'Liberal Arts' }
-    ];
-
-    this.departmentMapping.clear();
-    defaultDepartments.forEach(dept => {
-      this.departmentMapping.set(dept.id, dept);
-    });
-  }
-
   async sendDepartmentSelection(to) {
-    await this.loadDepartmentsFromFirebase(); // Refresh departments
+    // Always use hardcoded departments for now to avoid Firebase issues
+    this.loadDefaultDepartments();
 
-    const message = `🏛️ *Select Your Department* 📋
+    const message = `🏛️ *Select Your Department*
 
-Please choose your department from the list below:`;
+Please choose your department:`;
 
-    // Group departments by category
-    const categories = {
-      'Engineering': [],
-      'Business & Commerce': [],
-      'Health Sciences': [],
-      'Liberal Arts': []
-    };
-
-    // Populate categories
-    for (const [id, dept] of this.departmentMapping.entries()) {
-      if (categories[dept.category]) {
-        categories[dept.category].push({ id, ...dept });
+    // Create simple sections with shorter names
+    const sections = [
+      {
+        title: "Engineering",
+        rows: [
+          { id: 'dept_cs', title: 'Computer Science', description: 'CS & IT Department' },
+          { id: 'dept_ece', title: 'Electronics', description: 'ECE Department' },
+          { id: 'dept_mech', title: 'Mechanical', description: 'Mechanical Engineering' },
+          { id: 'dept_civil', title: 'Civil', description: 'Civil Engineering' }
+        ]
+      },
+      {
+        title: "Business & Others",
+        rows: [
+          { id: 'dept_bba', title: 'Business Admin', description: 'BBA Department' },
+          { id: 'dept_bcom', title: 'Commerce', description: 'B.Com Department' },
+          { id: 'dept_nursing', title: 'Nursing', description: 'Nursing Department' },
+          { id: 'dept_psychology', title: 'Psychology', description: 'Psychology Department' }
+        ]
       }
-    }
-
-    // Build sections for list message
-    const sections = [];
-    for (const [category, departments] of Object.entries(categories)) {
-      if (departments.length > 0) {
-        sections.push({
-          title: category,
-          rows: departments.map(dept => ({
-            id: dept.id,
-            title: dept.name,
-            description: dept.description || ''
-          }))
-        });
-      }
-    }
+    ];
 
     await this.sendListMessage(to, message, "Choose Department", sections);
   }
@@ -302,36 +300,36 @@ Please choose your department from the list below:`;
   // =================== COMPLAINT CATEGORIES ===================
 
   async sendComplaintCategorySelection(to) {
-    const message = `📝 *Select Complaint Category* 🎯
+    const message = `📝 *Select Complaint Category*
 
-Please choose the category that best describes your complaint:`;
+Choose the category that best describes your complaint:`;
 
     const sections = [
       {
         title: "Academic Issues",
         rows: [
-          { id: 'cat_1', title: 'Course Content & Curriculum', description: 'Issues with course structure or content' },
-          { id: 'cat_2', title: 'Faculty Teaching Methods', description: 'Concerns about teaching approaches' },
-          { id: 'cat_3', title: 'Assessment & Grading', description: 'Evaluation and grading concerns' },
-          { id: 'cat_4', title: 'Academic Scheduling', description: 'Timetable and scheduling issues' }
+          { id: 'cat_1', title: 'Course Content', description: 'Course structure issues' },
+          { id: 'cat_2', title: 'Teaching Methods', description: 'Faculty teaching concerns' },
+          { id: 'cat_3', title: 'Grading Issues', description: 'Assessment concerns' },
+          { id: 'cat_4', title: 'Scheduling', description: 'Timetable issues' }
         ]
       },
       {
-        title: "Infrastructure & Services",
+        title: "Infrastructure",
         rows: [
-          { id: 'cat_5', title: 'Classroom Facilities', description: 'Physical classroom conditions' },
-          { id: 'cat_6', title: 'Laboratory Equipment', description: 'Lab facilities and equipment' },
-          { id: 'cat_7', title: 'Library Services', description: 'Library resources and services' },
-          { id: 'cat_8', title: 'Internet & Technology', description: 'IT infrastructure and connectivity' }
+          { id: 'cat_5', title: 'Classrooms', description: 'Classroom facilities' },
+          { id: 'cat_6', title: 'Lab Equipment', description: 'Laboratory issues' },
+          { id: 'cat_7', title: 'Library', description: 'Library services' },
+          { id: 'cat_8', title: 'IT & Internet', description: 'Technology issues' }
         ]
       },
       {
-        title: "Administrative & Others",
+        title: "Other Issues",
         rows: [
-          { id: 'cat_9', title: 'Administrative Processes', description: 'Bureaucratic and admin issues' },
-          { id: 'cat_10', title: 'Student Support Services', description: 'Support service concerns' },
-          { id: 'cat_11', title: 'Hostel & Accommodation', description: 'Housing and accommodation issues' },
-          { id: 'cat_12', title: 'Other Issues', description: 'Any other concerns not listed above' }
+          { id: 'cat_9', title: 'Administration', description: 'Admin processes' },
+          { id: 'cat_10', title: 'Student Support', description: 'Support services' },
+          { id: 'cat_11', title: 'Hostel', description: 'Accommodation issues' },
+          { id: 'cat_12', title: 'Other', description: 'Other concerns' }
         ]
       }
     ];
@@ -360,7 +358,7 @@ Please choose the category that best describes your complaint:`;
   // =================== SEVERITY SELECTION ===================
 
   async sendSeveritySelection(to) {
-    const message = `⚠️ *Select Priority Level* 🎯
+    const message = `⚠️ *Select Priority Level*
 
 How urgent is this issue?`;
 
@@ -368,10 +366,10 @@ How urgent is this issue?`;
       {
         title: "Priority Levels",
         rows: [
-          { id: 'sev_1', title: 'Low Priority', description: 'Minor inconvenience, can wait for resolution' },
-          { id: 'sev_2', title: 'Medium Priority', description: 'Moderate impact, needs attention within a week' },
-          { id: 'sev_3', title: 'High Priority', description: 'Significant impact, requires prompt attention' },
-          { id: 'sev_4', title: 'Critical Priority', description: 'Urgent issue, immediate attention required' }
+          { id: 'sev_1', title: 'Low Priority', description: 'Minor issue, can wait' },
+          { id: 'sev_2', title: 'Medium Priority', description: 'Needs attention this week' },
+          { id: 'sev_3', title: 'High Priority', description: 'Significant impact' },
+          { id: 'sev_4', title: 'Critical', description: 'Urgent, immediate attention' }
         ]
       }
     ];

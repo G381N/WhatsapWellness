@@ -149,15 +149,15 @@ async function handleInteractiveMessage(from, interactive, userName) {
   }
 
   switch (replyId) {
-    case 'connect_counselors':
+    case 'counseling':
       await startCounselorFlow(from, userName);
       break;
 
-    case 'anonymous_complaints':
+    case 'anonymous':
       await startAnonymousComplaintFlow(from, userName);
       break;
 
-    case 'department_complaints':
+    case 'department':
       await startDepartmentComplaintFlow(from, userName);
       break;
 
