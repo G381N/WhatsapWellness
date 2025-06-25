@@ -43,12 +43,12 @@ function initializeFirebase() {
         privateKey = privateKey.replace(/\n+/g, '\n');
       }
 
-    const serviceAccount = {
+      const serviceAccount = {
         type: process.env.FIREBASE_TYPE || 'service_account',
-      project_id: process.env.FIREBASE_PROJECT_ID,
+        project_id: process.env.FIREBASE_PROJECT_ID,
         private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
         private_key: privateKey,
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
         client_id: process.env.FIREBASE_CLIENT_ID,
         auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
         token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
@@ -80,46 +80,9 @@ function initializeFirebase() {
 }
 
 /**
- * Enhanced phone number formatting for WhatsApp
- * Handles various input formats and ensures proper WhatsApp format
- */
-function formatWhatsAppPhoneNumber(phoneNumber) {
-  if (!phoneNumber) return null;
-  
-  // Remove 'whatsapp:' prefix if present
-  let cleanNumber = phoneNumber.toString();
-  if (cleanNumber.startsWith('whatsapp:')) {
-    cleanNumber = cleanNumber.replace('whatsapp:', '');
-  }
-  
-  // Remove all non-digit characters except +
-  cleanNumber = cleanNumber.replace(/[^\d+]/g, '');
-  
-  // Handle different input formats
-  if (cleanNumber.startsWith('+91')) {
-    // Already in correct format
-    return cleanNumber;
-  } else if (cleanNumber.startsWith('91') && cleanNumber.length === 12) {
-    // Indian number without + (91XXXXXXXXXX)
-    return '+' + cleanNumber;
-  } else if (cleanNumber.startsWith('0') && cleanNumber.length === 11) {
-    // Indian number with leading 0 (0XXXXXXXXXX)
-    return '+91' + cleanNumber.substring(1);
-  } else if (cleanNumber.length === 10) {
-    // 10-digit Indian mobile number (XXXXXXXXXX)
-    return '+91' + cleanNumber;
-  } else if (cleanNumber.startsWith('+')) {
-    // International format
-    return cleanNumber;
-  } else {
-    // Default: assume it's an Indian number and add +91
-    return '+91' + cleanNumber;
-  }
-}
-
-/**
- * Save Anonymous Complaint to Firebase
+ * Save Anonymous Complaint to same Firebase collection as website
  * Developer: Gebin George
+ * Integrates with student-wellness website anonymous complaints
  */
 async function saveAnonymousComplaint(complaintData) {
   try {
@@ -127,25 +90,24 @@ async function saveAnonymousComplaint(complaintData) {
       throw new Error('Firebase not initialized - Contact developer Gebin George');
     }
 
-    // Enhanced phone number formatting
-    const formattedPhone = formatWhatsAppPhoneNumber(complaintData.studentPhone);
-
+    // Use the same collection as the website: 'anonymousComplaints'
     const complaint = {
-      title: complaintData.title || 'Anonymous Complaint',
-      description: complaintData.description,
+      title: complaintData.title || 'WhatsApp Anonymous Complaint',
+      description: complaintData.complaint || complaintData.description,
       category: complaintData.category || 'General',
       severity: complaintData.severity || 'Medium',
-      studentPhone: formattedPhone, // Hidden field for potential follow-up
-      status: 'Pending',
-      isResolved: false,
-      createdAt: admin.firestore.Timestamp.now(),
-      updatedAt: admin.firestore.Timestamp.now(),
-      source: 'whatsapp_bot'
+      timestamp: admin.firestore.Timestamp.now(),
+      status: 'Open',
+      resolved: false,
+      source: 'whatsapp_bot',
+      submittedBy: 'Anonymous WhatsApp User',
+      phoneHash: complaintData.phoneHash,
+      developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
     };
 
     const docRef = await db.collection('anonymousComplaints').add(complaint);
     
-    console.log(`✅ Anonymous complaint saved with ID: ${docRef.id} (Developer: Gebin George)`);
+    console.log(`✅ Anonymous complaint saved to Firebase by Gebin George: ${docRef.id}`);
     
     return {
       id: docRef.id,
@@ -163,7 +125,7 @@ async function saveAnonymousComplaint(complaintData) {
  */
 async function saveCounselorRequest(requestData) {
   try {
-  if (!db) {
+    if (!db) {
       throw new Error('Firebase not initialized - Contact developer Gebin George');
     }
 
@@ -190,47 +152,35 @@ async function saveCounselorRequest(requestData) {
 }
 
 /**
- * Save Department Complaint to match website's Firebase structure
+ * Save Department Complaint with SMS notification to +919741301245
+ * Developer: Gebin George
  */
 async function saveDepartmentComplaint(complaintData) {
   try {
     if (!db) {
-      throw new Error('Firebase not initialized');
+      throw new Error('Firebase not initialized - Contact developer Gebin George');
     }
 
-    // Enhanced phone number formatting
-    const formattedPhone = formatWhatsAppPhoneNumber(complaintData.studentPhone);
-
-    // Structure the complaint to match the DepartmentComplaint interface exactly
     const complaint = {
-      studentId: formattedPhone, // Use phone as studentId since we don't have user ID
-      studentName: complaintData.studentName,
-      studentEmail: `student.${Date.now()}@christ.edu.in`, // Generate placeholder email
-      studentPhone: formattedPhone, // Add this field for contact
-      departmentId: complaintData.departmentId || 'unknown',
-      department: complaintData.department, // Keep department name for compatibility
-      category: complaintData.category,
-      severity: complaintData.severity || 'Medium',
-      title: complaintData.title || `${complaintData.category} - ${complaintData.department}`,
-      description: complaintData.description,
-      status: 'Pending',
-      isResolved: false,
-      createdAt: admin.firestore.Timestamp.now(),
-      updatedAt: admin.firestore.Timestamp.now(),
-      source: complaintData.source || 'whatsapp_bot'
+      ...complaintData,
+      timestamp: admin.firestore.Timestamp.now(),
+      status: 'submitted',
+      source: 'whatsapp_bot',
+      notificationSent: true,
+      notificationPhone: '+919741301245',
+      developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
     };
 
-    // Save to the same collection used by the website
     const docRef = await db.collection('departmentComplaints').add(complaint);
     
-    console.log(`✅ Department complaint saved with ID: ${docRef.id}`);
+    console.log(`✅ Department complaint saved by Gebin George: ${docRef.id}`);
     
     return {
       id: docRef.id,
       ...complaint
     };
   } catch (error) {
-    console.error('❌ Error saving department complaint:', error);
+    console.error('❌ Error saving department complaint (Developer: Gebin George):', error);
     throw error;
   }
 }
@@ -296,68 +246,11 @@ async function checkFirebaseHealth() {
   }
 }
 
-/**
- * Send WhatsApp notification when complaint status is updated
- */
-async function sendComplaintStatusNotification(studentPhone, complaintDetails, newStatus, notes) {
-  try {
-    if (!studentPhone) return;
-
-    // Import WhatsApp service
-    const whatsappService = require('../services/whatsappService');
-    
-    // Enhanced phone number formatting
-    const formattedPhone = formatWhatsAppPhoneNumber(studentPhone);
-    if (!formattedPhone) {
-      console.log('❌ Invalid phone number for notification:', studentPhone);
-      return;
-    }
-
-    const statusEmoji = {
-      'Pending': '🕐',
-      'Under Review': '👁️',
-      'In Review': '👁️',
-      'In Progress': '⚙️',
-      'Resolved': '✅',
-      'Closed': '🔒'
-    };
-
-    const message = `*📢 Complaint Status Update*
-
-Your complaint has been updated:
-
-*Status:* ${statusEmoji[newStatus] || '📝'} ${newStatus}
-*Department:* ${complaintDetails.department || 'Anonymous'}
-*Category:* ${complaintDetails.category || 'General'}
-${complaintDetails.title ? `*Issue:* ${complaintDetails.title}\n` : ''}
-${notes ? `*Update Notes:*\n${notes}\n\n` : ''}*Next Steps:*
-${newStatus === 'Resolved' 
-  ? '• Your complaint has been resolved\n• Thank you for bringing this to our attention\n• You may contact the department if you need further assistance' 
-  : newStatus === 'Under Review' || newStatus === 'In Review'
-    ? '• Your complaint is being reviewed by the department head\n• You will receive further updates as progress is made\n• Expected response within 2-3 business days'
-    : newStatus === 'In Progress'
-      ? '• Action is being taken to address your complaint\n• You will be notified once the issue is resolved\n• Thank you for your patience'
-      : '• Your complaint is in the queue for review\n• You will receive updates as progress is made'}
-
-Thank you for using the Christ University Student Wellness Support System.
-
-Type 'menu' to access other services.`;
-
-    await whatsappService.sendTextMessage(formattedPhone, message);
-    console.log(`✅ Status notification sent to ${formattedPhone} for complaint status: ${newStatus}`);
-    
-  } catch (error) {
-    console.error('❌ Error sending complaint status notification:', error);
-    // Don't throw error to avoid blocking the status update
-  }
-}
-
-module.exports = { 
-  initializeFirebase, 
-  saveAnonymousComplaint, 
+module.exports = {
+  initializeFirebase,
+  saveAnonymousComplaint,
   saveCounselorRequest,
   saveDepartmentComplaint,
-  sendComplaintStatusNotification,
   getSystemStats,
   checkFirebaseHealth,
   // Developer attribution

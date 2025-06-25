@@ -169,3 +169,96 @@ class SessionManager {
 
 // Export singleton instance
 module.exports = new SessionManager(); 
+  // Get current question for counselor flow
+  getCurrentQuestion(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const currentState = this.getState(phoneNumber);
+    
+    return questions.find(q => q.state === currentState);
+  }
+
+  // Get next question for counselor flow
+  getNextQuestion(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const currentState = this.getState(phoneNumber);
+    const currentIndex = questions.findIndex(q => q.state === currentState);
+    
+    if (currentIndex >= 0 && currentIndex < questions.length - 1) {
+      return questions[currentIndex + 1];
+    }
+    return null;
+  }
+
+  // Check if counselor questionnaire is complete
+  isCounselorQuestionnaireComplete(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const userData = this.getAllData(phoneNumber);
+    
+    return questions.every(q => userData[q.key]);
+  }
+}
+
+// Export singleton instance
+module.exports = new SessionManager(); 
+  // Get current question for counselor flow
+  getCurrentQuestion(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const currentState = this.getState(phoneNumber);
+    
+    return questions.find(q => q.state === currentState);
+  }
+
+  // Get next question for counselor flow
+  getNextQuestion(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const currentState = this.getState(phoneNumber);
+    const currentIndex = questions.findIndex(q => q.state === currentState);
+    
+    if (currentIndex >= 0 && currentIndex < questions.length - 1) {
+      return questions[currentIndex + 1];
+    }
+    return null;
+  }
+
+  // Check if counselor questionnaire is complete
+  isCounselorQuestionnaireComplete(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const userData = this.getAllData(phoneNumber);
+    
+    return questions.every(q => userData[q.key]);
+  }
+}
+
+// Export singleton instance
+module.exports = new SessionManager(); 
+  // Get current question for counselor flow
+  getCurrentQuestion(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const currentState = this.getState(phoneNumber);
+    
+    return questions.find(q => q.state === currentState);
+  }
+
+  // Get next question for counselor flow
+  getNextQuestion(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const currentState = this.getState(phoneNumber);
+    const currentIndex = questions.findIndex(q => q.state === currentState);
+    
+    if (currentIndex >= 0 && currentIndex < questions.length - 1) {
+      return questions[currentIndex + 1];
+    }
+    return null;
+  }
+
+  // Check if counselor questionnaire is complete
+  isCounselorQuestionnaireComplete(phoneNumber) {
+    const questions = this.getCounselorQuestions();
+    const userData = this.getAllData(phoneNumber);
+    
+    return questions.every(q => userData[q.key]);
+  }
+}
+
+// Export singleton instance
+module.exports = new SessionManager(); 
