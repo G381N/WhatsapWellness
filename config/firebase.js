@@ -80,9 +80,8 @@ function initializeFirebase() {
 }
 
 /**
- * Save Anonymous Complaint to same Firebase collection as website
+ * Save Anonymous Complaint to Firebase
  * Developer: Gebin George
- * Integrates with student-wellness website anonymous complaints
  */
 async function saveAnonymousComplaint(complaintData) {
   try {
@@ -90,24 +89,33 @@ async function saveAnonymousComplaint(complaintData) {
       throw new Error('Firebase not initialized - Contact developer Gebin George');
     }
 
-    // Use the same collection as the website: 'anonymousComplaints'
+    // Format WhatsApp phone number (remove 'whatsapp:' prefix if present)
+    let formattedPhone = complaintData.studentPhone;
+    if (formattedPhone && formattedPhone.startsWith('whatsapp:')) {
+      formattedPhone = formattedPhone.replace('whatsapp:', '');
+    }
+    
+    // Ensure phone number has + prefix for international format
+    if (formattedPhone && !formattedPhone.startsWith('+')) {
+      formattedPhone = '+' + formattedPhone;
+    }
+
     const complaint = {
-      title: complaintData.title || 'WhatsApp Anonymous Complaint',
-      description: complaintData.complaint || complaintData.description,
+      title: complaintData.title || 'Anonymous Complaint',
+      description: complaintData.description,
       category: complaintData.category || 'General',
       severity: complaintData.severity || 'Medium',
-      timestamp: admin.firestore.Timestamp.now(),
-      status: 'Open',
-      resolved: false,
-      source: 'whatsapp_bot',
-      submittedBy: 'Anonymous WhatsApp User',
-      phoneHash: complaintData.phoneHash,
-      developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
+      studentPhone: formattedPhone, // Hidden field for potential follow-up
+      status: 'Pending',
+      isResolved: false,
+      createdAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now(),
+      source: 'whatsapp_bot'
     };
 
     const docRef = await db.collection('anonymousComplaints').add(complaint);
     
-    console.log(`✅ Anonymous complaint saved to Firebase by Gebin George: ${docRef.id}`);
+    console.log(`✅ Anonymous complaint saved with ID: ${docRef.id} (Developer: Gebin George)`);
     
     return {
       id: docRef.id,
@@ -160,18 +168,33 @@ async function saveDepartmentComplaint(complaintData) {
       throw new Error('Firebase not initialized');
     }
 
-    // Structure the complaint to match the DepartmentComplaint interface from firebase-utils.ts
+    // Format WhatsApp phone number (remove 'whatsapp:' prefix if present)
+    let formattedPhone = complaintData.studentPhone;
+    if (formattedPhone && formattedPhone.startsWith('whatsapp:')) {
+      formattedPhone = formattedPhone.replace('whatsapp:', '');
+    }
+    
+    // Ensure phone number has + prefix for international format
+    if (formattedPhone && !formattedPhone.startsWith('+')) {
+      formattedPhone = '+' + formattedPhone;
+    }
+
+    // Structure the complaint to match the DepartmentComplaint interface exactly
     const complaint = {
+      studentId: formattedPhone, // Use phone as studentId since we don't have user ID
+      studentName: complaintData.studentName,
+      studentEmail: `student.${Date.now()}@christ.edu.in`, // Generate placeholder email
+      studentPhone: formattedPhone, // Add this field for contact
+      departmentId: complaintData.departmentId || 'unknown',
+      department: complaintData.department, // Keep department name for compatibility
+      category: complaintData.category,
+      severity: complaintData.severity || 'Medium',
       title: complaintData.title || `${complaintData.category} - ${complaintData.department}`,
       description: complaintData.description,
-      category: complaintData.category,
-      department: complaintData.department,
-      severity: complaintData.severity || 'Medium',
-      timestamp: admin.firestore.Timestamp.now(),
-      status: 'Open',
-      resolved: false,
-      studentName: complaintData.studentName,
-      studentPhone: complaintData.studentPhone,
+      status: 'Pending',
+      isResolved: false,
+      createdAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now(),
       source: complaintData.source || 'whatsapp_bot'
     };
 
@@ -251,11 +274,69 @@ async function checkFirebaseHealth() {
   }
 }
 
+/**
+ * Send WhatsApp notification when complaint status is updated
+ */
+async function sendComplaintStatusNotification(studentPhone, complaintDetails, newStatus, notes) {
+  try {
+    if (!studentPhone) return;
+
+    // Import WhatsApp service
+    const whatsappService = require('../services/whatsappService');
+    
+    // Format phone number for WhatsApp
+    let formattedPhone = studentPhone;
+    if (formattedPhone.startsWith('whatsapp:')) {
+      formattedPhone = formattedPhone.replace('whatsapp:', '');
+    }
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+' + formattedPhone;
+    }
+
+    const statusEmoji = {
+      'Pending': '🕐',
+      'Under Review': '👁️',
+      'In Progress': '⚙️',
+      'Resolved': '✅',
+      'Closed': '🔒'
+    };
+
+    const message = `*📢 Complaint Status Update*
+
+Your complaint has been updated:
+
+*Status:* ${statusEmoji[newStatus] || '📝'} ${newStatus}
+*Department:* ${complaintDetails.department || 'N/A'}
+*Category:* ${complaintDetails.category || 'N/A'}
+
+${notes ? `*Update Notes:*\n${notes}\n\n` : ''}*Next Steps:*
+${newStatus === 'Resolved' 
+  ? '• Your complaint has been resolved\n• Thank you for bringing this to our attention\n• You may contact the department if you need further assistance' 
+  : newStatus === 'Under Review' 
+    ? '• Your complaint is being reviewed by the department head\n• You will receive further updates as progress is made\n• Expected response within 2-3 business days'
+    : newStatus === 'In Progress'
+      ? '• Action is being taken to address your complaint\n• You will be notified once the issue is resolved\n• Thank you for your patience'
+      : '• Your complaint is in the queue for review\n• You will receive updates as progress is made'}
+
+Thank you for using the Christ University Student Wellness Support System.
+
+Type 'menu' to access other services.`;
+
+    await whatsappService.sendTextMessage(formattedPhone, message);
+    console.log(`✅ Status notification sent to ${formattedPhone} for complaint status: ${newStatus}`);
+    
+  } catch (error) {
+    console.error('❌ Error sending complaint status notification:', error);
+    // Don't throw error to avoid blocking the status update
+  }
+}
+
 module.exports = {
   initializeFirebase,
   saveAnonymousComplaint,
   saveCounselorRequest,
   saveDepartmentComplaint,
+  sendComplaintStatusNotification,
   getSystemStats,
   checkFirebaseHealth,
   // Developer attribution

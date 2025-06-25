@@ -377,9 +377,19 @@ Please choose your department to proceed with your complaint:`;
   getDepartmentContact(departmentId) {
     const head = this.departmentHeadMapping.get(departmentId);
     if (head) {
-      return `*Department Head:* ${head.name}\n*Email:* ${head.email}\n*Phone:* ${head.phone}`;
+      // Format phone number for WhatsApp display
+      let phoneDisplay = head.phone;
+      if (phoneDisplay && phoneDisplay !== 'Contact via email' && phoneDisplay !== '+91-XXXXXXXXXX') {
+        // Ensure proper formatting for display
+        if (!phoneDisplay.startsWith('+')) {
+          phoneDisplay = '+' + phoneDisplay;
+        }
+        return `*Department Head:* ${head.name}\n*Email:* ${head.email}\n*Phone:* ${phoneDisplay}`;
+      } else {
+        return `*Department Head:* ${head.name}\n*Email:* ${head.email}\n*Phone:* Contact via email or department office`;
+      }
     }
-    return 'Contact information will be provided by the department.';
+    return 'Contact information will be provided by the department upon complaint submission.';
   }
 
   // =================== COMPLAINT CATEGORIES ===================
