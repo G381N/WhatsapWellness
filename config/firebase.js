@@ -43,12 +43,12 @@ function initializeFirebase() {
         privateKey = privateKey.replace(/\n+/g, '\n');
       }
 
-      const serviceAccount = {
+    const serviceAccount = {
         type: process.env.FIREBASE_TYPE || 'service_account',
-        project_id: process.env.FIREBASE_PROJECT_ID,
+      project_id: process.env.FIREBASE_PROJECT_ID,
         private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
         private_key: privateKey,
-        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
         client_id: process.env.FIREBASE_CLIENT_ID,
         auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
         token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
@@ -80,6 +80,44 @@ function initializeFirebase() {
 }
 
 /**
+ * Enhanced phone number formatting for WhatsApp
+ * Handles various input formats and ensures proper WhatsApp format
+ */
+function formatWhatsAppPhoneNumber(phoneNumber) {
+  if (!phoneNumber) return null;
+  
+  // Remove 'whatsapp:' prefix if present
+  let cleanNumber = phoneNumber.toString();
+  if (cleanNumber.startsWith('whatsapp:')) {
+    cleanNumber = cleanNumber.replace('whatsapp:', '');
+  }
+  
+  // Remove all non-digit characters except +
+  cleanNumber = cleanNumber.replace(/[^\d+]/g, '');
+  
+  // Handle different input formats
+  if (cleanNumber.startsWith('+91')) {
+    // Already in correct format
+    return cleanNumber;
+  } else if (cleanNumber.startsWith('91') && cleanNumber.length === 12) {
+    // Indian number without + (91XXXXXXXXXX)
+    return '+' + cleanNumber;
+  } else if (cleanNumber.startsWith('0') && cleanNumber.length === 11) {
+    // Indian number with leading 0 (0XXXXXXXXXX)
+    return '+91' + cleanNumber.substring(1);
+  } else if (cleanNumber.length === 10) {
+    // 10-digit Indian mobile number (XXXXXXXXXX)
+    return '+91' + cleanNumber;
+  } else if (cleanNumber.startsWith('+')) {
+    // International format
+    return cleanNumber;
+  } else {
+    // Default: assume it's an Indian number and add +91
+    return '+91' + cleanNumber;
+  }
+}
+
+/**
  * Save Anonymous Complaint to Firebase
  * Developer: Gebin George
  */
@@ -89,16 +127,8 @@ async function saveAnonymousComplaint(complaintData) {
       throw new Error('Firebase not initialized - Contact developer Gebin George');
     }
 
-    // Format WhatsApp phone number (remove 'whatsapp:' prefix if present)
-    let formattedPhone = complaintData.studentPhone;
-    if (formattedPhone && formattedPhone.startsWith('whatsapp:')) {
-      formattedPhone = formattedPhone.replace('whatsapp:', '');
-    }
-    
-    // Ensure phone number has + prefix for international format
-    if (formattedPhone && !formattedPhone.startsWith('+')) {
-      formattedPhone = '+' + formattedPhone;
-    }
+    // Enhanced phone number formatting
+    const formattedPhone = formatWhatsAppPhoneNumber(complaintData.studentPhone);
 
     const complaint = {
       title: complaintData.title || 'Anonymous Complaint',
@@ -133,7 +163,7 @@ async function saveAnonymousComplaint(complaintData) {
  */
 async function saveCounselorRequest(requestData) {
   try {
-    if (!db) {
+  if (!db) {
       throw new Error('Firebase not initialized - Contact developer Gebin George');
     }
 
@@ -168,16 +198,8 @@ async function saveDepartmentComplaint(complaintData) {
       throw new Error('Firebase not initialized');
     }
 
-    // Format WhatsApp phone number (remove 'whatsapp:' prefix if present)
-    let formattedPhone = complaintData.studentPhone;
-    if (formattedPhone && formattedPhone.startsWith('whatsapp:')) {
-      formattedPhone = formattedPhone.replace('whatsapp:', '');
-    }
-    
-    // Ensure phone number has + prefix for international format
-    if (formattedPhone && !formattedPhone.startsWith('+')) {
-      formattedPhone = '+' + formattedPhone;
-    }
+    // Enhanced phone number formatting
+    const formattedPhone = formatWhatsAppPhoneNumber(complaintData.studentPhone);
 
     // Structure the complaint to match the DepartmentComplaint interface exactly
     const complaint = {
@@ -284,18 +306,17 @@ async function sendComplaintStatusNotification(studentPhone, complaintDetails, n
     // Import WhatsApp service
     const whatsappService = require('../services/whatsappService');
     
-    // Format phone number for WhatsApp
-    let formattedPhone = studentPhone;
-    if (formattedPhone.startsWith('whatsapp:')) {
-      formattedPhone = formattedPhone.replace('whatsapp:', '');
-    }
-    if (!formattedPhone.startsWith('+')) {
-      formattedPhone = '+' + formattedPhone;
+    // Enhanced phone number formatting
+    const formattedPhone = formatWhatsAppPhoneNumber(studentPhone);
+    if (!formattedPhone) {
+      console.log('❌ Invalid phone number for notification:', studentPhone);
+      return;
     }
 
     const statusEmoji = {
       'Pending': '🕐',
       'Under Review': '👁️',
+      'In Review': '👁️',
       'In Progress': '⚙️',
       'Resolved': '✅',
       'Closed': '🔒'
@@ -306,13 +327,13 @@ async function sendComplaintStatusNotification(studentPhone, complaintDetails, n
 Your complaint has been updated:
 
 *Status:* ${statusEmoji[newStatus] || '📝'} ${newStatus}
-*Department:* ${complaintDetails.department || 'N/A'}
-*Category:* ${complaintDetails.category || 'N/A'}
-
+*Department:* ${complaintDetails.department || 'Anonymous'}
+*Category:* ${complaintDetails.category || 'General'}
+${complaintDetails.title ? `*Issue:* ${complaintDetails.title}\n` : ''}
 ${notes ? `*Update Notes:*\n${notes}\n\n` : ''}*Next Steps:*
 ${newStatus === 'Resolved' 
   ? '• Your complaint has been resolved\n• Thank you for bringing this to our attention\n• You may contact the department if you need further assistance' 
-  : newStatus === 'Under Review' 
+  : newStatus === 'Under Review' || newStatus === 'In Review'
     ? '• Your complaint is being reviewed by the department head\n• You will receive further updates as progress is made\n• Expected response within 2-3 business days'
     : newStatus === 'In Progress'
       ? '• Action is being taken to address your complaint\n• You will be notified once the issue is resolved\n• Thank you for your patience'
@@ -331,9 +352,9 @@ Type 'menu' to access other services.`;
   }
 }
 
-module.exports = {
-  initializeFirebase,
-  saveAnonymousComplaint,
+module.exports = { 
+  initializeFirebase, 
+  saveAnonymousComplaint, 
   saveCounselorRequest,
   saveDepartmentComplaint,
   sendComplaintStatusNotification,

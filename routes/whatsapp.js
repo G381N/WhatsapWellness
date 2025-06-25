@@ -136,17 +136,16 @@ async function handleInteractiveMessage(from, interactive, userName) {
     return;
   }
 
-  // Handle category selections  
-  if (currentState === 'category_selection' && replyId?.startsWith('cat_')) {
-    await handleCategorySelectionResponse(from, replyId, userName);
-    return;
-  }
+  // Remove category and severity selection handlers since we simplified the flow
+  // if (currentState === 'category_selection' && replyId?.startsWith('cat_')) {
+  //   await handleCategorySelectionResponse(from, replyId, userName);
+  //   return;
+  // }
 
-  // Handle severity selections
-  if (currentState === 'severity_selection' && replyId?.startsWith('sev_')) {
-    await handleSeveritySelectionResponse(from, replyId, userName);
-    return;
-  }
+  // if (currentState === 'severity_selection' && replyId?.startsWith('sev_')) {
+  //   await handleSeveritySelectionResponse(from, replyId, userName);
+  //   return;
+  // }
 
   switch (replyId) {
     case 'counseling':
@@ -532,51 +531,25 @@ async function handleDepartmentSelectionResponse(from, replyId, userName) {
 *Department Contact Information:*
 ${contactInfo}
 
-Your complaint will be directed to the department head shown above. Please proceed to categorize your concern for proper routing and resolution.`);
-  
-  await whatsappService.sendComplaintCategorySelection(from);
-  sessionManager.setState(from, 'category_selection');
-}
+Your complaint will be directed to the department head shown above.
 
-async function handleCategorySelectionResponse(from, replyId, userName) {
-  const categoryName = whatsappService.getCategoryName(replyId);
-  sessionManager.setData(from, 'selectedCategory', categoryName);
-  sessionManager.setData(from, 'selectedCategoryId', replyId);
-  
-  await whatsappService.sendTextMessage(from, 
-    `*Category Selected:* ${categoryName}
+*Please describe your issue in detail:*
 
-Please select the priority level for your complaint to ensure appropriate response timing:`);
-  await whatsappService.sendSeveritySelection(from);
-  sessionManager.setState(from, 'severity_selection');
-}
-
-async function handleSeveritySelectionResponse(from, replyId, userName) {
-  const severityName = whatsappService.getSeverityName(replyId);
-  sessionManager.setData(from, 'selectedSeverity', severityName);
-  sessionManager.setData(from, 'selectedSeverityId', replyId);
-  
-  await whatsappService.sendTextMessage(from, 
-    `*Priority Level:* ${severityName}
-
-*Please provide your complaint details:*
-
-Describe your concern comprehensively to help our department heads address your issue effectively. Include relevant details such as:
-
+Include relevant information such as:
 • Specific situation or incident
-• When it occurred
+• When it occurred  
 • Any steps you've already taken
 • Expected resolution
 
 Please type your detailed complaint now:`);
+  
+  // Skip category and severity selection, go directly to complaint input
   sessionManager.setState(from, 'department_complaint_input');
 }
 
 async function handleDepartmentComplaint(from, complaintText, userName) {
   const department = sessionManager.getData(from, 'selectedDepartment');
   const departmentId = sessionManager.getData(from, 'selectedDepartmentId');
-  const category = sessionManager.getData(from, 'selectedCategory');
-  const severity = sessionManager.getData(from, 'selectedSeverity');
   
   const summaryText = `*Department Complaint Summary*
 
@@ -584,12 +557,9 @@ async function handleDepartmentComplaint(from, complaintText, userName) {
 • Name: ${userName}
 • Contact: ${from}
 
-*Complaint Details:*
-• Department: ${department}
-• Category: ${category}
-• Priority: ${severity}
+*Department:* ${department}
 
-*Description:*
+*Complaint Description:*
 ${complaintText}
 
 *Important Notice:*
@@ -611,18 +581,16 @@ async function submitDepartmentComplaint(from, userName) {
   try {
     const department = sessionManager.getData(from, 'selectedDepartment');
     const departmentId = sessionManager.getData(from, 'selectedDepartmentId');
-    const category = sessionManager.getData(from, 'selectedCategory');
-    const severity = sessionManager.getData(from, 'selectedSeverity');
     const complaintText = sessionManager.getData(from, 'complaintText');
     
     // Enhanced complaint data structure to match the Firebase function exactly
     const complaintData = {
-      title: `${category} - ${department}`,
+      title: `Department Complaint - ${department}`,
       description: complaintText,
-      category: category,
+      category: 'General', // Default category since we removed category selection
       department: department,
-      departmentId: departmentId, // Include department ID
-      severity: severity,
+      departmentId: departmentId,
+      severity: 'Medium', // Default severity since we removed severity selection
       studentName: userName,
       studentPhone: from, // Will be formatted in Firebase function
       source: 'whatsapp_bot'
@@ -641,8 +609,6 @@ Your complaint has been successfully submitted to the Christ University Student 
 
 *Complaint Reference:*
 • Department: ${department}
-• Category: ${category}
-• Priority: ${severity}
 • Submission Time: ${new Date().toLocaleString()}
 
 *Next Steps:*
