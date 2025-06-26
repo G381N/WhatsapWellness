@@ -227,6 +227,217 @@ Please select an option from the menu below:`;
       sections
     );
   }
+
+  // Send admin/HOD complaint management buttons
+  async sendComplaintManagementButtons(to, complaintId, studentPhoneNumber, complaintSummary) {
+    const bodyText = `*New Complaint Received*
+
+Complaint ID: *${complaintId}*
+Summary: ${complaintSummary}
+
+Please choose an action:`;
+
+    const buttons = [
+      {
+        id: `dashboard_${complaintId}`,
+        title: "📊 Open Dashboard"
+      },
+      {
+        id: `chat_${studentPhoneNumber}`,
+        title: "💬 Message Student"
+      },
+      {
+        id: `call_${studentPhoneNumber}`,
+        title: "📞 Call Student"
+      }
+    ];
+
+    return await this.sendButtonMessage(to, bodyText, buttons);
+  }
+
+  // Send URL button message (for dashboard links)
+  async sendUrlButtonMessage(to, bodyText, buttonText, url) {
+    try {
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: {
+            text: bodyText
+          },
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: buttonText,
+              url: url
+            }
+          }
+        }
+      };
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ URL button message sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending URL button message:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Send notification to HOD/Admin about new complaint
+  async notifyComplaintToAdmin(adminPhoneNumber, complaintData) {
+    const { id, studentPhone, department, issueType, description, urgency } = complaintData;
+    
+    const notificationText = `🚨 *New Complaint Alert*
+
+*Complaint ID:* ${id}
+*Department:* ${department}
+*Issue Type:* ${issueType}
+*Urgency:* ${urgency}
+*Description:* ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}
+
+*Submitted by:* Student (Anonymous)
+*Time:* ${new Date().toLocaleString()}`;
+
+    // First send the notification text
+    await this.sendTextMessage(adminPhoneNumber, notificationText);
+
+    // Then send the management buttons
+    return await this.sendComplaintManagementButtons(
+      adminPhoneNumber, 
+      id, 
+      studentPhone, 
+      `${issueType} - ${urgency}`
+    );
+  }
+
+  // Handle complaint management actions
+  async handleComplaintAction(from, action, actionData) {
+    const [actionType, targetData] = action.split('_');
+
+    switch (actionType) {
+      case 'dashboard':
+        const complaintId = targetData;
+        const dashboardUrl = `https://student-wellness-gamma.vercel.app/dashboard?complaint=${complaintId}`;
+        
+        return await this.sendUrlButtonMessage(
+          from,
+          `Opening dashboard for Complaint ID: *${complaintId}*\n\nClick the button below to review and manage this complaint:`,
+          "🔗 Open Dashboard",
+          dashboardUrl
+        );
+
+      case 'chat':
+        const studentPhone = targetData;
+        const chatMessage = `You can now contact the student directly at: *${studentPhone}*\n\nType your message and I'll help you send it to the student, or use WhatsApp's direct messaging feature.`;
+        
+        // Send the contact info and offer to facilitate messaging
+        await this.sendTextMessage(from, chatMessage);
+        
+        // Send quick action buttons for common responses
+        const quickResponseButtons = [
+          {
+            id: `quick_acknowledge_${studentPhone}`,
+            title: "✅ Acknowledge Receipt"
+          },
+          {
+            id: `quick_schedule_${studentPhone}`,
+            title: "📅 Schedule Meeting"
+          },
+          {
+            id: `quick_more_info_${studentPhone}`,
+            title: "❓ Request More Info"
+          }
+        ];
+        
+        return await this.sendButtonMessage(
+          from,
+          "Choose a quick response or type your custom message:",
+          quickResponseButtons
+        );
+
+      case 'call':
+        const phoneToCall = targetData;
+        const callText = `📞 *Ready to Call Student*
+
+Student Phone: *${phoneToCall}*
+
+Click the number above in WhatsApp to call directly, or copy the number to your phone dialer.
+
+*Alternative:* You can also use the Call button below to open your phone's dialer automatically.`;
+
+        return await this.sendTextMessage(from, callText);
+
+      case 'quick':
+        // Handle quick response actions
+        const [responseType, targetPhone] = targetData.split('_');
+        return await this.handleQuickResponse(from, responseType, targetPhone);
+
+      default:
+        return await this.sendTextMessage(from, "Unknown action. Please try again.");
+    }
+  }
+
+  // Handle quick response messages
+  async handleQuickResponse(adminPhone, responseType, studentPhone) {
+    let responseMessage = '';
+
+    switch (responseType) {
+      case 'acknowledge':
+        responseMessage = `Hi! This is regarding your recent complaint submission to Christ University Student Wellness Support.
+
+We have received your concern and want you to know that we take it seriously. Your complaint has been assigned to the appropriate department for review.
+
+You will hear back from us within 24-48 hours with next steps.
+
+Thank you for bringing this to our attention.
+
+Best regards,
+Christ University Wellness Team`;
+        break;
+
+      case 'schedule':
+        responseMessage = `Hi! Regarding your complaint submission to our Student Wellness Support system.
+
+We would like to schedule a meeting to discuss your concern in detail. Please reply with your preferred:
+
+• Day and time
+• Meeting type (In-person/Phone/Video call)
+• Any specific requirements
+
+We're committed to resolving your issue promptly.
+
+Best regards,
+Christ University Wellness Team`;
+        break;
+
+      case 'more':
+        responseMessage = `Hi! We're reviewing your complaint submitted to Christ University Student Wellness Support.
+
+To better assist you, could you please provide additional information about:
+
+• Specific dates/times when the issue occurred
+• Any witnesses or additional details
+• Your preferred resolution outcome
+
+Your detailed response will help us address your concern more effectively.
+
+Best regards,
+Christ University Wellness Team`;
+        break;
+    }
+
+    // Send the response to the student
+    await this.sendTextMessage(studentPhone, responseMessage);
+
+    // Confirm to admin that message was sent
+    return await this.sendTextMessage(
+      adminPhone, 
+      `✅ Message sent to student (${studentPhone})\n\n📝 *Message sent:*\n"${responseMessage.substring(0, 100)}..."`
+    );
+  }
 }
 
 module.exports = new WhatsAppService(); 

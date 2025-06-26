@@ -127,6 +127,12 @@ async function handleInteractiveMessage(from, interactive, userName) {
   
   const replyId = buttonReply?.id || listReply?.id;
 
+  // Handle complaint management actions (dashboard, chat, call)
+  if (replyId.startsWith('dashboard_') || replyId.startsWith('chat_') || replyId.startsWith('call_') || replyId.startsWith('quick_')) {
+    await whatsappService.handleComplaintAction(from, replyId);
+    return;
+  }
+
   switch (replyId) {
     case 'connect_counselors':
       await startCounselorFlow(from, userName);
@@ -429,8 +435,12 @@ Please type your complaint or concern below. Take your time to describe the situ
 
 async function handleAnonymousComplaint(from, complaintText, userName) {
   try {
+    // Generate unique complaint ID for anonymous complaints
+    const complaintId = `ANON-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    
     // Enhanced complaint data structure to match website's anonymous complaints
     const complaintData = {
+      id: complaintId,
       title: 'WhatsApp Anonymous Complaint',
       description: complaintText,
       complaint: complaintText, // Backward compatibility
@@ -438,6 +448,10 @@ async function handleAnonymousComplaint(from, complaintText, userName) {
       severity: 'Medium',
       submittedBy: 'Anonymous WhatsApp Student',
       phoneHash: Buffer.from(from).toString('base64'), // Hashed phone for tracking without revealing identity
+      studentPhone: from, // For admin contact (but kept anonymous)
+      department: 'Anonymous Complaint',
+      issueType: 'Anonymous Issue',
+      urgency: 'Normal',
       complaintType: 'anonymous',
       source: 'whatsapp_bot',
       developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
@@ -449,6 +463,8 @@ async function handleAnonymousComplaint(from, complaintText, userName) {
     await whatsappService.sendTextMessage(from, 
       `*Anonymous Complaint Submitted Successfully*
 
+*Complaint ID:* ${complaintId}
+
 Thank you for bringing this to our attention. Your complaint has been submitted anonymously to the university administrators and is now integrated with our main system.
 
 *Your Privacy is Protected:*
@@ -458,6 +474,10 @@ Thank you for bringing this to our attention. Your complaint has been submitted 
 • You may receive updates through this chat if needed
 
 Thank you for helping us improve our university environment.`);
+
+    // Notify admin with interactive buttons for anonymous complaints too
+    const adminPhoneNumber = '919741301245'; // Admin phone number
+    await whatsappService.notifyComplaintToAdmin(adminPhoneNumber, complaintData);
 
     // Reset session
     sessionManager.setState(from, 'initial');
@@ -519,12 +539,20 @@ async function submitDepartmentComplaint(from, userName) {
     const department = sessionManager.getData(from, 'selectedDepartment');
     const complaintText = sessionManager.getData(from, 'complaintText');
     
+    // Generate unique complaint ID
+    const complaintId = `DEPT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    
     const complaintData = {
+      id: complaintId,
       name: userName,
       phoneNumber: from,
+      studentPhone: from, // For compatibility with new system
       department: department,
       complaint: complaintText,
       complaintType: 'department_specific',
+      issueType: 'Department Issue',
+      description: complaintText,
+      urgency: 'Normal', // Default urgency
       developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
     };
 
@@ -535,33 +563,20 @@ async function submitDepartmentComplaint(from, userName) {
     await whatsappService.sendTextMessage(from, 
       `*Complaint Submitted Successfully!*
 
+*Complaint ID:* ${complaintId}
+
 Thank you ${userName}! Your complaint regarding ${department} has been submitted and forwarded to the department team.
 
 *What happens next?*
 • Your complaint will be reviewed by department representatives
-• The department team has been notified via SMS
+• The department team has been notified via WhatsApp with management tools
 • You may be contacted for follow-up within 2-3 business days
 
 Thank you for helping us improve our services!`);
 
-    // Send to department phone
-    const departmentMessage = `*New Department Complaint*
-
-*Department:* ${department}
-*Student:* ${userName}
-*Phone:* ${from}
-
-*Complaint:*
-${complaintText}
-
-*Submitted:* ${new Date().toLocaleString()}
-
-Please review and take appropriate action.
-
-_Christ University Student Wellness System_`;
-
-    // Send to specific phone number: 919741301245 (correct WhatsApp API format)
-    await whatsappService.sendTextMessage('919741301245', departmentMessage);
+    // Notify HOD/admin with interactive buttons using the new system
+    const adminPhoneNumber = '919741301245'; // HOD/Admin phone number
+    await whatsappService.notifyComplaintToAdmin(adminPhoneNumber, complaintData);
 
     // Reset session
     sessionManager.clearSession(from);
