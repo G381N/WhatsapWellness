@@ -182,6 +182,13 @@ async function handleInteractiveMessage(from, interactive, userName) {
     return;
   }
 
+  // Handle complaint action buttons from department heads/admins
+  if (replyId.startsWith('dashboard_') || replyId.startsWith('message_') || 
+      replyId.startsWith('call_') || replyId.startsWith('acknowledge_')) {
+    await handleComplaintAction(from, replyId, userName);
+    return;
+  }
+
   switch (replyId) {
     case 'connect_counselors':
       await startCounselorFlow(from, userName);
@@ -729,6 +736,54 @@ ${whatsappLink}
 • Schedule sessions as per your availability`;
 
   await whatsappService.sendTextMessage(counselorPhone, messageText);
+}
+
+// Handle complaint actions from department heads/admins
+async function handleComplaintAction(from, replyId, userName) {
+  try {
+    if (replyId.startsWith('dashboard_')) {
+      const complaintId = replyId.replace('dashboard_', '');
+      const dashboardUrl = `https://dashboard.example.com/complaints/${complaintId}`;
+      
+      await whatsappService.sendTextMessage(from, 
+        `Dashboard Access\n\nClick to view full complaint details:\n${dashboardUrl}`);
+        
+    } else if (replyId.startsWith('message_')) {
+      const studentPhone = replyId.replace('message_', '');
+      const whatsappUrl = `https://wa.me/${studentPhone}`;
+      
+      await whatsappService.sendTextMessage(from, 
+        `Student Contact\n\nClick to chat → ${whatsappUrl}`);
+        
+    } else if (replyId.startsWith('call_')) {
+      const studentPhone = replyId.replace('call_', '');
+      const formattedPhone = studentPhone.startsWith('91') ? 
+        `+${studentPhone}` : `+91${studentPhone}`;
+      
+      await whatsappService.sendTextMessage(from, 
+        `Student Phone\n\nCall → ${formattedPhone}`);
+        
+    } else if (replyId.startsWith('acknowledge_')) {
+      // Parse complaint ID and student phone from the acknowledge action
+      // Format: acknowledge_{complaintId}_{studentPhone}
+      const acknowledgeData = replyId.replace('acknowledge_', '');
+      const lastUnderscoreIndex = acknowledgeData.lastIndexOf('_');
+      const complaintId = acknowledgeData.substring(0, lastUnderscoreIndex);
+      const studentPhone = acknowledgeData.substring(lastUnderscoreIndex + 1);
+      
+      // Send acknowledgment to the student
+      await whatsappService.sendTextMessage(studentPhone, 
+        `Hello, your complaint regarding your department has been received.\nWe are reviewing it and will get back to you soon.`);
+      
+      // Confirm to the department head
+      await whatsappService.sendTextMessage(from, 
+        `Acknowledgment Sent\n\nThe student has been notified that their complaint (${complaintId}) was received and is being reviewed.`);
+    }
+  } catch (error) {
+    console.error('Error handling complaint action:', error);
+    await whatsappService.sendTextMessage(from, 
+      "Sorry, there was an error processing your action. Please try again.");
+  }
 }
 
 // Cleanup old sessions every hour

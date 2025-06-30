@@ -69,22 +69,32 @@ class WhatsAppService {
   }
 
   // Send interactive list
-  async sendListMessage(to, bodyText, buttonText, sections) {
+  async sendListMessage(to, bodyText, buttonText, sections, header = null) {
     try {
+      const interactiveData = {
+        type: 'list',
+        body: {
+          text: bodyText
+        },
+        action: {
+          button: buttonText,
+          sections: sections
+        }
+      };
+
+      // Add header if provided
+      if (header) {
+        interactiveData.header = {
+          type: 'text',
+          text: header
+        };
+      }
+
       const data = {
         messaging_product: 'whatsapp',
         to: to,
         type: 'interactive',
-        interactive: {
-          type: 'list',
-          body: {
-            text: bodyText
-          },
-          action: {
-            button: buttonText,
-            sections: sections
-          }
-        }
+        interactive: interactiveData
       };
 
       const response = await axios.post(this.baseURL, data, { headers: this.headers });
@@ -422,15 +432,13 @@ ${completionMessage} What would you like to do next?`;
     return await this.sendListMessage(to, menuText, "Explore More Services", sections);
   }
 
-  // Send notification to HOD/Admin about new complaint with enhanced format using template message
+  // Send notification to HOD/Admin about new complaint with interactive list format
   async notifyComplaintToAdmin(adminPhoneNumber, complaintData) {
     const { id, studentPhone, department, issueType, urgency, name } = complaintData;
     
-    // Format phone number for display and WhatsApp URL
+    // Format phone number for display
     const formattedPhone = studentPhone.startsWith('91') ? 
       `+${studentPhone}` : `+91${studentPhone}`;
-    const whatsappPhone = studentPhone.startsWith('91') ? 
-      studentPhone : `91${studentPhone}`;
     
     // Format submission date
     const submissionDate = new Date().toLocaleString('en-IN', {
@@ -443,60 +451,56 @@ ${completionMessage} What would you like to do next?`;
       hour12: true
     });
 
-    // Dashboard URL
-    const dashboardUrl = `https://student-wellness-gamma.vercel.app/complaints/${id}`;
-    
-    // WhatsApp chat URL
-    const whatsappUrl = `https://wa.me/${whatsappPhone}`;
+    const alertText = `Complaint ID: ${id}
+Issue Type: ${issueType}
+Urgency: ${urgency}
+Department: ${department}
+Raised By: ${name}
+Phone: ${formattedPhone}
+Submitted On: ${submissionDate}
 
-    const alertText = `🚨 *NEW COMPLAINT ALERT*
+Please choose an action below:`;
 
-*Complaint ID:* ${id}
-*Issue Type:* ${issueType}
-*Urgency Level:* ${urgency}
-*Department:* ${department}
-*Raised By:* ${name}
-*Phone Number:* ${formattedPhone}
-*Submitted On:* ${submissionDate}
-
-Please take appropriate action using the buttons below:`;
-
-    // Send single message with all 3 direct action buttons
-    try {
-      const data = {
-        messaging_product: 'whatsapp',
-        to: adminPhoneNumber,
-        type: 'interactive',
-        interactive: {
-          type: 'button',
-          body: {
-            text: alertText
+    // Interactive list sections
+    const sections = [
+      {
+        title: "Available Actions",
+        rows: [
+          {
+            id: `dashboard_${id}`,
+            title: "Open Dashboard",
+            description: "View full complaint on the web"
           },
-          action: {
-            buttons: [
-              {
-                type: 'url',
-                url: dashboardUrl,
-                text: '📊 Open Dashboard'
-              },
-              {
-                type: 'url', 
-                url: whatsappUrl,
-                text: '💬 Message Student'
-              },
-              {
-                type: 'phone_number',
-                phone_number: formattedPhone,
-                text: '📞 Call Student'
-              }
-            ]
+          {
+            id: `message_${studentPhone}`,
+            title: "Message Student", 
+            description: "Open WhatsApp chat with the student"
+          },
+          {
+            id: `call_${studentPhone}`,
+            title: "Call Student",
+            description: "Tap to call the student directly"
+          },
+          {
+            id: `acknowledge_${id}_${studentPhone}`,
+            title: "Acknowledge Complaint",
+            description: "Notify the student their complaint was received"
           }
-        }
-      };
+        ]
+      }
+    ];
 
-      const response = await axios.post(this.baseURL, data, { headers: this.headers });
-      console.log('✅ Professional complaint alert with direct action buttons sent successfully:', response.data);
-      return response.data;
+    try {
+      const response = await this.sendListMessage(
+        adminPhoneNumber,
+        alertText,
+        "Select an Action",
+        sections,
+        "New Complaint Alert"
+      );
+      
+      console.log('✅ Professional complaint alert with interactive list sent successfully:', response);
+      return response;
     } catch (error) {
       console.error('❌ Error sending complaint alert:', error.response?.data || error.message);
       throw error;
