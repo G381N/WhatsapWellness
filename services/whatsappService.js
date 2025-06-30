@@ -443,59 +443,51 @@ ${completionMessage} What would you like to do next?`;
       hour12: true
     });
 
-    const alertText = `🚨 New Complaint Alert
+    // Dashboard URL
+    const dashboardUrl = `https://student-wellness-gamma.vercel.app/complaints/${id}`;
+    
+    // WhatsApp chat URL
+    const whatsappUrl = `https://wa.me/${whatsappPhone}`;
 
-Complaint ID: ${id}
-Issue Type: ${issueType}
-Urgency: ${urgency}
-Department: ${department}
-Raised By: ${name}
-Phone: ${formattedPhone}
-Submitted On: ${submissionDate}
+    const alertText = `🚨 *NEW COMPLAINT ALERT*
 
-Please choose an action:`;
+*Complaint ID:* ${id}
+*Issue Type:* ${issueType}
+*Urgency Level:* ${urgency}
+*Department:* ${department}
+*Raised By:* ${name}
+*Phone Number:* ${formattedPhone}
+*Submitted On:* ${submissionDate}
 
-    // Send single message with all 3 action buttons
-    return await this.sendComplaintActionButtons(adminPhoneNumber, id, studentPhone, alertText);
-  }
+Please take appropriate action using the buttons below:`;
 
-  // Send complaint action buttons - single message with all 3 buttons
-  async sendComplaintActionButtons(to, complaintId, studentPhoneNumber, messageText) {
+    // Send single message with all 3 direct action buttons
     try {
-      const formattedPhone = studentPhoneNumber.startsWith('91') ? 
-        studentPhoneNumber : `91${studentPhoneNumber}`;
-
       const data = {
         messaging_product: 'whatsapp',
-        to: to,
+        to: adminPhoneNumber,
         type: 'interactive',
         interactive: {
           type: 'button',
           body: {
-            text: messageText
+            text: alertText
           },
           action: {
             buttons: [
               {
-                type: 'reply',
-                reply: {
-                  id: `dashboard_url_${complaintId}`,
-                  title: '📊 Open Dashboard'
-                }
+                type: 'url',
+                url: dashboardUrl,
+                text: '📊 Open Dashboard'
               },
               {
-                type: 'reply',
-                reply: {
-                  id: `whatsapp_url_${studentPhoneNumber}`,
-                  title: '💬 Message Student'
-                }
+                type: 'url', 
+                url: whatsappUrl,
+                text: '💬 Message Student'
               },
               {
-                type: 'reply',
-                reply: {
-                  id: `call_url_${studentPhoneNumber}`,
-                  title: '📞 Call Student'
-                }
+                type: 'phone_number',
+                phone_number: formattedPhone,
+                text: '📞 Call Student'
               }
             ]
           }
@@ -503,125 +495,10 @@ Please choose an action:`;
       };
 
       const response = await axios.post(this.baseURL, data, { headers: this.headers });
-      console.log('✅ Single complaint alert with all action buttons sent successfully:', response.data);
+      console.log('✅ Professional complaint alert with direct action buttons sent successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error sending complaint action buttons:', error.response?.data || error.message);
-      throw error;
-    }
-  }
-
-  // Handle complaint management actions - simplified for direct actions
-  async handleComplaintAction(from, action, actionData) {
-    const actionParts = action.split('_');
-    const actionType = actionParts[0];
-    const urlType = actionParts[1];
-    const targetData = actionParts.slice(2).join('_');
-
-    switch (actionType) {
-      case 'dashboard':
-        if (urlType === 'url') {
-          const complaintId = targetData;
-          const dashboardUrl = `https://student-wellness-gamma.vercel.app/complaints/${complaintId}`;
-          
-          return await this.sendDirectUrlButton(
-            from,
-            `📊 Dashboard Access\n\nComplaint ID: ${complaintId}\n\nClick the button below to open the complaint dashboard:`,
-            "🔗 Open Dashboard",
-            dashboardUrl
-          );
-        }
-        break;
-
-      case 'whatsapp':
-        if (urlType === 'url') {
-          const studentPhone = targetData;
-          const formattedPhone = studentPhone.startsWith('91') ? studentPhone : `91${studentPhone}`;
-          const whatsappUrl = `https://wa.me/${formattedPhone}`;
-          
-          return await this.sendDirectUrlButton(
-            from,
-            `💬 Direct Message Student\n\nStudent Phone: +${formattedPhone}\n\nClick the button below to open WhatsApp chat:`,
-            "💬 Open WhatsApp Chat",
-            whatsappUrl
-          );
-        }
-        break;
-
-      case 'call':
-        if (urlType === 'url') {
-          const studentPhone = targetData;
-          const formattedPhone = studentPhone.startsWith('91') ? `+${studentPhone}` : `+91${studentPhone}`;
-          
-          return await this.sendTextMessage(
-            from,
-            `📞 Call Student Directly\n\nStudent Phone: ${formattedPhone}\n\nTap the number above to call directly from WhatsApp.`
-          );
-        }
-        break;
-
-      default:
-        return await this.sendTextMessage(from, "Action completed. The requested link or action has been processed.");
-    }
-  }
-
-  // Updated direct action buttons method for cleaner complaint alerts
-  async sendDirectActionButtons(to, complaintId, studentPhoneNumber, customMessage = null) {
-    try {
-      // Format phone number for international format (assuming Indian numbers)
-      const formattedPhone = studentPhoneNumber.startsWith('91') ? 
-        studentPhoneNumber : `91${studentPhoneNumber}`;
-      
-      const bodyText = customMessage || `🚨 *New Complaint Alert*
-
-*Complaint ID:* ${complaintId}
-*Student Phone:* +${formattedPhone}
-*Submitted:* ${new Date().toLocaleString()}
-
-Choose an action below:`;
-
-      const data = {
-        messaging_product: 'whatsapp',
-        to: to,
-        type: 'interactive',
-        interactive: {
-          type: 'button',
-          body: {
-            text: bodyText
-          },
-          action: {
-            buttons: [
-              {
-                type: 'reply',
-                reply: {
-                  id: `dashboard_url_${complaintId}`,
-                  title: '📊 Open Dashboard'
-                }
-              },
-              {
-                type: 'reply', 
-                reply: {
-                  id: `whatsapp_url_${studentPhoneNumber}`,
-                  title: '💬 Message Student'
-                }
-              },
-              {
-                type: 'reply',
-                reply: {
-                  id: `call_url_${studentPhoneNumber}`,
-                  title: '📞 Call Student'
-                }
-              }
-            ]
-          }
-        }
-      };
-
-      const response = await axios.post(this.baseURL, data, { headers: this.headers });
-      console.log('✅ Direct action buttons sent successfully:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error sending direct action buttons:', error.response?.data || error.message);
+      console.error('❌ Error sending complaint alert:', error.response?.data || error.message);
       throw error;
     }
   }

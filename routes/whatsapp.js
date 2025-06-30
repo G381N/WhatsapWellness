@@ -127,12 +127,6 @@ async function handleInteractiveMessage(from, interactive, userName) {
   
   const replyId = buttonReply?.id || listReply?.id;
 
-  // Handle complaint management actions (dashboard, chat, call)
-  if (replyId.startsWith('dashboard_') || replyId.startsWith('whatsapp_') || replyId.startsWith('call_')) {
-    await whatsappService.handleComplaintAction(from, replyId);
-    return;
-  }
-
   // Handle urgency selection
   if (replyId.startsWith('urgency_')) {
     const urgencyLevel = replyId.replace('urgency_', '');
