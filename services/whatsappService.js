@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getDepartments } = require('../config/firebase');
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -200,32 +201,120 @@ Please select an option from the menu below:`;
     );
   }
 
-  // Send department selection
+  // Send department selection - fetched dynamically from Firebase
   async sendDepartmentSelection(to) {
-    const sections = [
-      {
-        title: "School of Sciences",
-        rows: [
-          {
-            id: "dept_mca",
-            title: "MCA",
-            description: "Master of Computer Applications"
-          },
-          {
-            id: "dept_msc_aiml",
-            title: "MSC AIML",
-            description: "MSc Artificial Intelligence & Machine Learning"
-          }
-        ]
+    try {
+      const departments = await getDepartments();
+      
+      if (departments.length === 0) {
+        // Fallback if no departments found
+        await this.sendTextMessage(to, 
+          "Sorry, no departments are currently available. Please try again later or contact support.");
+        return;
       }
-    ];
 
-    return await this.sendListMessage(
-      to,
-      "Please select your department:",
-      "Choose Department",
-      sections
-    );
+      const sections = [
+        {
+          title: "Available Departments",
+          rows: departments.map(dept => ({
+            id: `dept_${dept.code}`,
+            title: dept.name.split(' - ')[0], // Show short name
+            description: dept.name.split(' - ')[1] || dept.name // Show full description
+          }))
+        }
+      ];
+
+      return await this.sendListMessage(
+        to,
+        "Please select your department from the list below to proceed with raising a complaint:",
+        "Choose Department",
+        sections
+      );
+    } catch (error) {
+      console.error('❌ Error fetching departments (Developer: Gebin George):', error);
+      // Fallback to hardcoded departments
+      const sections = [
+        {
+          title: "School of Sciences",
+          rows: [
+            {
+              id: "dept_MCA",
+              title: "MCA",
+              description: "Master of Computer Applications"
+            },
+            {
+              id: "dept_MSC_AIML",
+              title: "MSC AIML",
+              description: "MSc Artificial Intelligence & Machine Learning"
+            }
+          ]
+        }
+      ];
+
+      return await this.sendListMessage(
+        to,
+        "Please select your department from the list below to proceed with raising a complaint:",
+        "Choose Department",
+        sections
+      );
+    }
+  }
+
+  // Send urgency selection buttons
+  async sendUrgencySelection(to) {
+    try {
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: `*Priority Level Selection*
+
+How urgent is this issue? Please choose one of the following:
+
+• **High:** Requires immediate attention (within 24 hours)
+• **Normal:** Standard processing time (2-3 business days)  
+• **Low:** Non-urgent matter (within a week)
+
+Your selection helps us prioritize and respond appropriately.`
+          },
+          action: {
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: 'urgency_high',
+                  title: '🔴 High Priority'
+                }
+              },
+              {
+                type: 'reply',
+                reply: {
+                  id: 'urgency_normal',
+                  title: '🟡 Normal Priority'
+                }
+              },
+              {
+                type: 'reply',
+                reply: {
+                  id: 'urgency_low',
+                  title: '🟢 Low Priority'
+                }
+              }
+            ]
+          }
+        }
+      };
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Urgency selection sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending urgency selection:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   // Send admin/HOD complaint management buttons

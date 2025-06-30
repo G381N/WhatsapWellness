@@ -12,70 +12,136 @@ let db = null;
  * Initialize Firebase Admin SDK
  * Developer: Gebin George
  */
-function initializeFirebase() {
+async function initializeFirebase() {
   try {
-    if (!admin.apps.length) {
-      // Enhanced private key parsing - handles multiple formatting issues
-      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-      
-      if (privateKey) {
-        // Replace escaped newlines with actual newlines
-        privateKey = privateKey.replace(/\\n/g, '\n');
-        
-        // Remove extra quotes that might be added by environment variable systems
-        privateKey = privateKey.replace(/^"(.*)"$/, '$1');
-        privateKey = privateKey.replace(/^'(.*)'$/, '$1');
-        
-        // Ensure proper PEM format
-        if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
-          // If the key doesn't have headers, try to reconstruct it
-          privateKey = privateKey.replace(/-----BEGIN PRIVATE KEY-----/g, '');
-          privateKey = privateKey.replace(/-----END PRIVATE KEY-----/g, '');
-          privateKey = privateKey.replace(/\s/g, '');
-          
-          // Add proper PEM headers and format
-          const chunks = privateKey.match(/.{1,64}/g) || [];
-          privateKey = '-----BEGIN PRIVATE KEY-----\n' + chunks.join('\n') + '\n-----END PRIVATE KEY-----';
-        }
-        
-        // Clean up any double newlines or spaces
-        privateKey = privateKey.replace(/\n\s+/g, '\n');
-        privateKey = privateKey.replace(/\n+/g, '\n');
-      }
-
+    if (admin.apps.length === 0) {
       const serviceAccount = {
-        type: process.env.FIREBASE_TYPE || 'service_account',
+        type: process.env.FIREBASE_TYPE,
         project_id: process.env.FIREBASE_PROJECT_ID,
         private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-        private_key: privateKey,
+        private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         client_email: process.env.FIREBASE_CLIENT_EMAIL,
         client_id: process.env.FIREBASE_CLIENT_ID,
-        auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
-        token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
-        auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
+        auth_uri: process.env.FIREBASE_AUTH_URI,
+        token_uri: process.env.FIREBASE_TOKEN_URI,
+        auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
         client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
       };
 
-      // Debug logging for troubleshooting (without exposing the actual key)
-      console.log('🔧 Firebase config check (Developer: Gebin George):');
-      console.log('  - Project ID:', serviceAccount.project_id ? '✓' : '✗');
-      console.log('  - Client Email:', serviceAccount.client_email ? '✓' : '✗');
-      console.log('  - Private Key:', privateKey ? `✓ (length: ${privateKey.length})` : '✗');
-      console.log('  - Private Key starts with PEM header:', privateKey?.startsWith('-----BEGIN PRIVATE KEY-----') ? '✓' : '✗');
-
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.FIREBASE_PROJECT_ID
+        databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com/`
       });
 
-      console.log('✅ Firebase initialized successfully by Gebin George');
+      console.log('✅ Firebase Admin SDK initialized successfully by Gebin George');
     }
 
     db = admin.firestore();
-    return true;
+    
+    // Initialize departments collection if it doesn't exist
+    await initializeDepartments();
+    
+    return db;
   } catch (error) {
-    console.error('❌ Firebase initialization error (Developer: Gebin George):', error);
+    console.error('❌ Firebase initialization failed (Developer: Gebin George):', error);
     throw error;
+  }
+}
+
+/**
+ * Initialize departments collection with default departments
+ * Developer: Gebin George
+ */
+async function initializeDepartments() {
+  try {
+    const departmentsRef = db.collection('departments');
+    const snapshot = await departmentsRef.get();
+    
+    if (snapshot.empty) {
+      console.log('🔧 Initializing departments collection...');
+      
+      const defaultDepartments = [
+        {
+          name: 'MCA - Master of Computer Applications',
+          code: 'MCA',
+          headPhoneNumber: '+919741301245',
+          isActive: true,
+          createdBy: 'Gebin George',
+          createdAt: admin.firestore.Timestamp.now()
+        },
+        {
+          name: 'MSC AIML - MSc Artificial Intelligence & Machine Learning',
+          code: 'MSC_AIML',
+          headPhoneNumber: '+919741301245',
+          isActive: true,
+          createdBy: 'Gebin George',
+          createdAt: admin.firestore.Timestamp.now()
+        }
+      ];
+
+      for (const dept of defaultDepartments) {
+        await departmentsRef.add(dept);
+      }
+      
+      console.log('✅ Departments collection initialized by Gebin George');
+    }
+  } catch (error) {
+    console.error('❌ Error initializing departments (Developer: Gebin George):', error);
+  }
+}
+
+/**
+ * Get all active departments from Firebase
+ * Developer: Gebin George
+ */
+async function getDepartments() {
+  try {
+    if (!db) {
+      throw new Error('Firebase not initialized - Contact developer Gebin George');
+    }
+
+    const departmentsRef = db.collection('departments');
+    const snapshot = await departmentsRef.where('isActive', '==', true).get();
+    
+    const departments = [];
+    snapshot.forEach(doc => {
+      departments.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    console.log(`✅ Retrieved ${departments.length} departments by Gebin George`);
+    return departments;
+  } catch (error) {
+    console.error('❌ Error fetching departments (Developer: Gebin George):', error);
+    throw error;
+  }
+}
+
+/**
+ * Get department head phone number by department code
+ * Developer: Gebin George
+ */
+async function getDepartmentHeadPhone(departmentCode) {
+  try {
+    if (!db) {
+      throw new Error('Firebase not initialized - Contact developer Gebin George');
+    }
+
+    const departmentsRef = db.collection('departments');
+    const snapshot = await departmentsRef.where('code', '==', departmentCode).where('isActive', '==', true).get();
+    
+    if (snapshot.empty) {
+      console.log(`⚠️ Department not found: ${departmentCode}`);
+      return '+919741301245'; // Default admin phone
+    }
+
+    const dept = snapshot.docs[0].data();
+    return dept.headPhoneNumber;
+  } catch (error) {
+    console.error('❌ Error fetching department head phone (Developer: Gebin George):', error);
+    return '+919741301245'; // Default admin phone
   }
 }
 
@@ -152,7 +218,7 @@ async function saveCounselorRequest(requestData) {
 }
 
 /**
- * Save Department Complaint with SMS notification to +919741301245
+ * Save Department Complaint with dynamic department head notification
  * Developer: Gebin George
  */
 async function saveDepartmentComplaint(complaintData) {
@@ -161,13 +227,16 @@ async function saveDepartmentComplaint(complaintData) {
       throw new Error('Firebase not initialized - Contact developer Gebin George');
     }
 
+    // Get department head phone number
+    const headPhoneNumber = await getDepartmentHeadPhone(complaintData.departmentCode);
+
     const complaint = {
       ...complaintData,
       timestamp: admin.firestore.Timestamp.now(),
       status: 'submitted',
       source: 'whatsapp_bot',
       notificationSent: true,
-      notificationPhone: '+919741301245',
+      notificationPhone: headPhoneNumber,
       developerNote: 'Submitted via WhatsApp Bot - Developed by Gebin George'
     };
 
@@ -177,6 +246,7 @@ async function saveDepartmentComplaint(complaintData) {
     
     return {
       id: docRef.id,
+      headPhoneNumber: headPhoneNumber,
       ...complaint
     };
   } catch (error) {
@@ -248,6 +318,8 @@ async function checkFirebaseHealth() {
 
 module.exports = {
   initializeFirebase,
+  getDepartments,
+  getDepartmentHeadPhone,
   saveAnonymousComplaint,
   saveCounselorRequest,
   saveDepartmentComplaint,
