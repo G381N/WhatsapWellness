@@ -316,6 +316,80 @@ async function checkFirebaseHealth() {
   }
 }
 
+// Get all counselors from Firebase
+async function getCounselors() {
+  try {
+    const counselorsRef = db.collection('counselors');
+    const snapshot = await counselorsRef.get();
+    
+    if (snapshot.empty) {
+      console.log('No counselors found in Firebase, using fallback');
+      // Fallback counselor data
+      return [{
+        id: 'counselor_001',
+        name: 'Gebin George',
+        phone: '+919741301245',
+        email: 'gebin@christuniversity.in',
+        department: 'Student Wellness',
+        isActive: true
+      }];
+    }
+
+    const counselors = [];
+    snapshot.forEach(doc => {
+      const counselorData = doc.data();
+      if (counselorData.isActive !== false) { // Include active counselors
+        counselors.push({
+          id: doc.id,
+          ...counselorData
+        });
+      }
+    });
+
+    console.log(`✅ Fetched ${counselors.length} active counselors from Firebase`);
+    return counselors;
+  } catch (error) {
+    console.error('❌ Error fetching counselors:', error);
+    // Return fallback counselor
+    return [{
+      id: 'counselor_fallback',
+      name: 'Gebin George',
+      phone: '+919741301245',
+      email: 'gebin@christuniversity.in',
+      department: 'Student Wellness',
+      isActive: true
+    }];
+  }
+}
+
+// Get random counselor for assignment
+async function getRandomCounselor() {
+  try {
+    const counselors = await getCounselors();
+    if (counselors.length === 0) {
+      throw new Error('No active counselors available');
+    }
+    
+    // Randomly select a counselor
+    const randomIndex = Math.floor(Math.random() * counselors.length);
+    const selectedCounselor = counselors[randomIndex];
+    
+    console.log(`✅ Randomly assigned counselor: ${selectedCounselor.name} (${selectedCounselor.id})`);
+    return selectedCounselor;
+  } catch (error) {
+    console.error('❌ Error getting random counselor:', error);
+    // Return fallback counselor
+    return {
+      id: 'counselor_fallback',
+      name: 'Gebin George',
+      phone: '+919741301245',
+      email: 'gebin@christuniversity.in',
+      department: 'Student Wellness',
+      isActive: true
+    };
+  }
+}
+
 module.exports = {
   initializeFirebase,
   getDepartments,
@@ -325,6 +399,8 @@ module.exports = {
   saveDepartmentComplaint,
   getSystemStats,
   checkFirebaseHealth,
+  getCounselors,
+  getRandomCounselor,
   // Developer attribution
   developer: 'Gebin George',
   version: '1.0.0',

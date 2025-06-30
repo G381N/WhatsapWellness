@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const whatsappService = require('../services/whatsappService');
 const sessionManager = require('../services/sessionManager');
-const { saveAnonymousComplaint, saveCounselorRequest, saveDepartmentComplaint, getDepartments } = require('../config/firebase');
+const { saveAnonymousComplaint, saveCounselorRequest, saveDepartmentComplaint, getDepartments, getRandomCounselor } = require('../config/firebase');
 
 // Webhook verification
 router.get('/', (req, res) => {
@@ -411,6 +411,9 @@ async function submitCounselorRequest(from, userName) {
   try {
     const userData = sessionManager.getAllData(from);
     
+    // Get random counselor assignment
+    const assignedCounselor = await getRandomCounselor();
+    
     const requestData = {
       name: userName,
       phoneNumber: from,
@@ -419,55 +422,76 @@ async function submitCounselorRequest(from, userName) {
       previousHelp: userData.previous_help,
       urgencyLevel: userData.urgency_level,
       preferredContact: userData.preferred_contact,
-      requestType: 'counselor_session'
+      requestType: 'counselor_session',
+      assignedCounselor: {
+        id: assignedCounselor.id,
+        name: assignedCounselor.name,
+        phone: assignedCounselor.phone,
+        email: assignedCounselor.email
+      }
     };
 
     // Save to Firebase
     await saveCounselorRequest(requestData);
 
-    // Send confirmation to user
+    // Send confirmation to user with counselor details
     await whatsappService.sendTextMessage(from, 
-      `Counseling Request Submitted Successfully!
+      `✅ Counseling Request Submitted Successfully!
 
-Thank you ${userName}! Your counseling request has been submitted to our professional counselors.
+Thank you ${userName}! Your counseling request has been submitted and processed.
 
-What happens next?
-• A counselor will review your request
-• You'll be contacted within 24-48 hours
-• They'll schedule a session based on your preferred contact method
-
-Remember, you're taking a positive step towards your mental wellness. We're here to support you!`);
-
-    // Send notification to counselor
-    const counselorMessage = `New Counseling Request
-
-Student: ${userName}
-Phone: ${from}
-
-Request Details:
+📋 Request Details:
 • Issue: ${userData.issue_description}
-• Duration: ${userData.issue_duration}
-• Previous Help: ${userData.previous_help}
 • Urgency: ${userData.urgency_level}
 • Preferred Contact: ${userData.preferred_contact}
 
-Submitted: ${new Date().toLocaleString()}
+👨‍⚕️ Assigned Counselor:
+• Name: ${assignedCounselor.name}
+• Email: ${assignedCounselor.email}
+• Phone: ${assignedCounselor.phone}
 
-Please contact the student to schedule a counseling session.`;
+📞 What happens next?
+• Your assigned counselor will review your request
+• You'll receive intimation shortly from ${assignedCounselor.name}
+• They'll contact you within 24-48 hours via your preferred method
+• All sessions are completely confidential
+
+Remember, seeking help is a sign of strength. We're here to support you!`);
+
+    // Send notification to assigned counselor
+    const counselorMessage = `🆕 New Counseling Request Assignment
+
+📋 Student Details:
+• Name: ${userName}
+• Phone: ${from}
+• Urgency: ${userData.urgency_level}
+• Preferred Contact: ${userData.preferred_contact}
+
+💭 Request Details:
+• Issue: ${userData.issue_description}
+• Duration: ${userData.issue_duration}
+• Previous Help: ${userData.previous_help}
+
+⏰ Submitted: ${new Date().toLocaleString('en-IN')}
+
+👨‍⚕️ Action Required:
+Please contact ${userName} to schedule a counseling session based on their preferred contact method.
+
+📧 Student expects contact from: ${assignedCounselor.name}`;
 
     const counselorButtons = [
       { id: `message_student_${from}`, title: 'Message Student' }
     ];
 
-    await whatsappService.sendButtonMessage(process.env.COUNSELOR_PHONE, counselorMessage, counselorButtons);
+    await whatsappService.sendButtonMessage(assignedCounselor.phone.replace(/\D/g, ''), counselorMessage, counselorButtons);
 
     // Reset session
     sessionManager.clearSession(from);
     
-    // Show service completion menu instead of static message
+    // Show service completion menu
     setTimeout(async () => {
       await whatsappService.sendServiceCompletionMenu(from, 
-        "Your counseling request has been processed. A professional counselor will contact you soon.");
+        `Your counseling request has been processed. ${assignedCounselor.name} will contact you soon.`);
     }, 2000);
 
   } catch (error) {
