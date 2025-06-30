@@ -72,14 +72,14 @@ class WhatsAppService {
   async sendListMessage(to, bodyText, buttonText, sections, header = null) {
     try {
       const interactiveData = {
-        type: 'list',
-        body: {
-          text: bodyText
-        },
-        action: {
-          button: buttonText,
-          sections: sections
-        }
+          type: 'list',
+          body: {
+            text: bodyText
+          },
+          action: {
+            button: buttonText,
+            sections: sections
+          }
       };
 
       // Add header if provided
@@ -535,6 +535,44 @@ Please choose an action below:`;
     } catch (error) {
       console.error('❌ Error sending direct URL button:', error.response?.data || error.message);
       throw error;
+    }
+  }
+
+  // Send interactive call button that opens dialer directly
+  async sendInteractiveCallButton(to, phoneNumber) {
+    try {
+      // Create an interactive button with the phone number as a clickable action
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: `📞 *Call Student*\n\nTap the button below to call:\n${phoneNumber}\n\n_Your phone dialer will open immediately._`
+          },
+          action: {
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: `direct_call_${phoneNumber.replace(/\D/g, '')}`,
+                  title: `📞 Call ${phoneNumber}`
+                }
+              }
+            ]
+          }
+        }
+      };
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Interactive call button sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending interactive call button:', error.response?.data || error.message);
+      // Fallback to simple text message if interactive button fails
+      await this.sendTextMessage(to, 
+        `📞 *Call Student*\n\nTap the phone number below to call:\n${phoneNumber}\n\n_Your phone dialer will open automatically when you tap the number._`);
     }
   }
 }

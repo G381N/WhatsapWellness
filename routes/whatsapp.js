@@ -189,6 +189,18 @@ async function handleInteractiveMessage(from, interactive, userName) {
     return;
   }
 
+  // Handle direct call button responses
+  if (replyId.startsWith('direct_call_')) {
+    const phoneNumber = replyId.replace('direct_call_', '');
+    const formattedPhone = phoneNumber.startsWith('91') ? 
+      `+${phoneNumber}` : `+91${phoneNumber}`;
+    
+    // Send a message with clickable phone number that opens dialer
+    await whatsappService.sendTextMessage(from, 
+      `📞 *Calling Student*\n\nTap this number to open dialer:\n${formattedPhone}`);
+    return;
+  }
+
   switch (replyId) {
     case 'connect_counselors':
       await startCounselorFlow(from, userName);
@@ -764,9 +776,8 @@ async function handleComplaintAction(from, replyId, userName) {
       const formattedPhone = studentPhone.startsWith('91') ? 
         `+${studentPhone}` : `+91${studentPhone}`;
       
-      // Send a simple text message with the phone number that can be tapped to call
-      await whatsappService.sendTextMessage(from, 
-        `📞 *Call Student*\n\nTap the phone number below to call:\n${formattedPhone}\n\n_Your phone dialer will open automatically when you tap the number._`);
+      // Send an interactive button that opens the dialer directly
+      await whatsappService.sendInteractiveCallButton(from, formattedPhone);
         
     } else if (replyId.startsWith('acknowledge_')) {
       // Parse complaint ID, student phone, name, and department from the acknowledge action
