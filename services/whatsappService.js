@@ -557,7 +557,7 @@ Please choose an action below:`;
                 type: 'reply',
                 reply: {
                   id: `direct_call_${phoneNumber.replace(/\D/g, '')}`,
-                  title: `📞 Call ${phoneNumber}`
+                  title: `📞 Call Now`
                 }
               }
             ]
