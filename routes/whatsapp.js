@@ -743,7 +743,7 @@ async function handleComplaintAction(from, replyId, userName) {
   try {
     if (replyId.startsWith('dashboard_')) {
       const complaintId = replyId.replace('dashboard_', '');
-      const dashboardUrl = `https://dashboard.example.com/complaints/${complaintId}`;
+      const dashboardUrl = `https://studentwellness.example.com/complaints/${complaintId}`;
       
       await whatsappService.sendUrlButtonMessage(from, 
         "Tap below to view the full complaint",
@@ -781,9 +781,12 @@ async function handleComplaintAction(from, replyId, userName) {
         const studentName = decodeURIComponent(parts[2]);
         const department = decodeURIComponent(parts[3]);
         
+        // Extract department short name (e.g., "MCA" from "MCA - Master of Computer Applications")
+        const departmentShortName = department.split(' - ')[0] || department;
+        
         // Send acknowledgment to the student with proper formatting
         await whatsappService.sendTextMessage(studentPhone, 
-          `Hello ${studentName},\nYour complaint regarding ${department} has been received.\nOur department is reviewing the issue and will get back to you soon.`);
+          `Hello ${studentName},\nYour complaint submitted to the Department of ${departmentShortName} has been received.\nWe are reviewing it and will get back to you shortly.`);
         
         // Confirm to the department head
         await whatsappService.sendTextMessage(from, 

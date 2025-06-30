@@ -541,6 +541,10 @@ Please choose an action below:`;
   // Send call button message
   async sendCallButtonMessage(to, bodyText, buttonText, phoneNumber) {
     try {
+      // Ensure phone number is in proper format for tel URI
+      const cleanPhone = phoneNumber.replace(/\D/g, ''); // Remove non-digits
+      const telUri = `tel:+${cleanPhone}`;
+      
       const data = {
         messaging_product: 'whatsapp',
         to: to,
@@ -554,7 +558,7 @@ Please choose an action below:`;
             buttons: [
               {
                 type: 'phone_number',
-                phone_number: phoneNumber,
+                phone_number: phoneNumber, // WhatsApp expects standard phone format
                 text: buttonText
               }
             ]
@@ -564,6 +568,7 @@ Please choose an action below:`;
 
       const response = await axios.post(this.baseURL, data, { headers: this.headers });
       console.log('✅ Call button message sent successfully:', response.data);
+      console.log(`📞 Call button created for: ${phoneNumber} (tel:${telUri})`);
       return response.data;
     } catch (error) {
       console.error('❌ Error sending call button message:', error.response?.data || error.message);
