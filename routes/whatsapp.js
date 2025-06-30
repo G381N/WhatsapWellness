@@ -128,8 +128,7 @@ async function handleInteractiveMessage(from, interactive, userName) {
   const replyId = buttonReply?.id || listReply?.id;
 
   // Handle complaint management actions (dashboard, chat, call)
-  if (replyId.startsWith('dashboard_') || replyId.startsWith('chat_') || replyId.startsWith('call_') || 
-      replyId.startsWith('whatsapp_') || replyId.startsWith('quick_')) {
+  if (replyId.startsWith('dashboard_') || replyId.startsWith('whatsapp_') || replyId.startsWith('call_')) {
     await whatsappService.handleComplaintAction(from, replyId);
     return;
   }
@@ -452,14 +451,10 @@ Please contact the student to schedule a counseling session.`;
     // Reset session
     sessionManager.clearSession(from);
     
-    // Show service completion message (only once at the end)
+    // Show service completion menu instead of static message
     setTimeout(async () => {
-      await whatsappService.sendTextMessage(from, 
-        `*Service Completed*
-
-Your counseling request has been processed. A professional counselor will contact you soon.
-
-Type 'menu' to explore other wellness services.`);
+      await whatsappService.sendServiceCompletionMenu(from, 
+        "Your counseling request has been processed. A professional counselor will contact you soon.");
     }, 2000);
 
   } catch (error) {
@@ -533,14 +528,10 @@ Thank you for helping us improve our university environment.`);
     // Reset session
     sessionManager.setState(from, 'initial');
     
-    // Show service completion message (only once at the end)
+    // Show service completion menu instead of static message
     setTimeout(async () => {
-      await whatsappService.sendTextMessage(from, 
-        `*Service Completed*
-
-Your anonymous complaint has been processed securely. Would you like to explore other wellness services?
-
-Type 'menu' to see all available services.`);
+      await whatsappService.sendServiceCompletionMenu(from,
+        "Your anonymous complaint has been processed securely.");
     }, 2000);
 
   } catch (error) {
@@ -653,17 +644,13 @@ Thank you for helping us improve our services!`);
     const headPhoneNumber = savedComplaint.headPhoneNumber || '+919741301245';
     await whatsappService.notifyComplaintToAdmin(headPhoneNumber, complaintData);
 
-    // Reset session and show completion message
+    // Reset session and show completion menu
     sessionManager.clearSession(from);
     
-    // Show service completion message (only once at the end)
+    // Show service completion menu instead of static message
     setTimeout(async () => {
-      await whatsappService.sendTextMessage(from, 
-        `*Service Completed*
-
-Your complaint has been processed. Would you like to explore other wellness services?
-
-Type 'menu' to see all available services.`);
+      await whatsappService.sendServiceCompletionMenu(from,
+        "Your complaint has been processed and forwarded to the department head.");
     }, 2000);
 
   } catch (error) {
@@ -688,14 +675,10 @@ Hello ${userName}! Visit our wellness community platform to:
 
 Join our supportive community today!`);
   
-  // Show service completion message (only once at the end)
+  // Show service completion menu instead of static message
   setTimeout(async () => {
-    await whatsappService.sendTextMessage(from, 
-      `*Information Shared*
-
-Community platform details have been provided. Would you like to explore other wellness services?
-
-Type 'menu' to see all available services.`);
+    await whatsappService.sendServiceCompletionMenu(from,
+      "Community platform details have been provided.");
   }, 2000);
 }
 
@@ -728,14 +711,10 @@ Your mental health and well-being are our top priorities. We're here to support 
 
   await whatsappService.sendTextMessage(from, aboutText);
   
-  // Show service completion message (only once at the end)
+  // Show service completion menu instead of static message
   setTimeout(async () => {
-    await whatsappService.sendTextMessage(from, 
-      `*Information Shared*
-
-System information has been provided. Would you like to explore our wellness services?
-
-Type 'menu' to see all available services.`);
+    await whatsappService.sendServiceCompletionMenu(from,
+      "System information has been provided.");
   }, 2000);
 }
 
