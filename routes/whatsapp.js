@@ -434,9 +434,8 @@ async function submitCounselorRequest(from, userName) {
     // Save to Firebase
     await saveCounselorRequest(requestData);
 
-    // Send confirmation to user with counselor details
-    await whatsappService.sendTextMessage(from, 
-      `✅ Counseling Request Submitted Successfully!
+    // Send confirmation to user with counselor details and service menu
+    const counselorConfirmationText = `✅ Counseling Request Submitted Successfully!
 
 Thank you ${userName}! Your counseling request has been submitted and processed.
 
@@ -456,7 +455,49 @@ Thank you ${userName}! Your counseling request has been submitted and processed.
 • They'll contact you within 24-48 hours via your preferred method
 • All sessions are completely confidential
 
-Remember, seeking help is a sign of strength. We're here to support you!`);
+Remember, seeking help is a sign of strength. We're here to support you!
+
+Would you like to access any other services?`;
+
+    const counselorServiceSections = [
+      {
+        title: "Support Services",
+        rows: [
+          {
+            id: "connect_counselors",
+            title: "Connect with Counselors",
+            description: "Get professional mental health support"
+          },
+          {
+            id: "anonymous_complaints",
+            title: "Anonymous Complaints",
+            description: "Submit anonymous concerns safely"
+          },
+          {
+            id: "department_complaints",
+            title: "Department Complaints",
+            description: "Report department-specific issues"
+          }
+        ]
+      },
+      {
+        title: "Information & Community",
+        rows: [
+          {
+            id: "community",
+            title: "Community Platform",
+            description: "Visit our wellness community website"
+          },
+          {
+            id: "about",
+            title: "About This Service",
+            description: "Learn about our support system"
+          }
+        ]
+      }
+    ];
+
+    await whatsappService.sendListMessage(from, counselorConfirmationText, "Select Service", counselorServiceSections);
 
     // Send notification to assigned counselor
     const counselorMessage = `🆕 New Counseling Request Assignment
@@ -543,8 +584,7 @@ async function handleAnonymousComplaint(from, complaintText, userName) {
     // Save to Firebase (same collection as website: anonymousComplaints)
     await saveAnonymousComplaint(complaintData);
 
-    await whatsappService.sendTextMessage(from, 
-      `Anonymous Complaint Submitted Successfully
+    const anonymousConfirmationText = `✅ Anonymous Complaint Submitted Successfully
 
 Complaint ID: ${complaintId}
 
@@ -556,7 +596,49 @@ Your Privacy is Protected:
 • Integrated with the main wellness platform for faster resolution
 • You may receive updates through this chat if needed
 
-Thank you for helping us improve our university environment.`);
+Thank you for helping us improve our university environment.
+
+Would you like to access any other services?`;
+
+    const anonymousServiceSections = [
+      {
+        title: "Support Services",
+        rows: [
+          {
+            id: "connect_counselors",
+            title: "Connect with Counselors",
+            description: "Get professional mental health support"
+          },
+          {
+            id: "anonymous_complaints",
+            title: "Anonymous Complaints",
+            description: "Submit anonymous concerns safely"
+          },
+          {
+            id: "department_complaints",
+            title: "Department Complaints",
+            description: "Report department-specific issues"
+          }
+        ]
+      },
+      {
+        title: "Information & Community",
+        rows: [
+          {
+            id: "community",
+            title: "Community Platform",
+            description: "Visit our wellness community website"
+          },
+          {
+            id: "about",
+            title: "About This Service",
+            description: "Learn about our support system"
+          }
+        ]
+      }
+    ];
+
+    await whatsappService.sendListMessage(from, anonymousConfirmationText, "Select Service", anonymousServiceSections);
 
     // Notify admin with interactive buttons for anonymous complaints too
     const adminPhoneNumber = '919741301245';
@@ -657,9 +739,8 @@ async function submitDepartmentComplaint(from, userName) {
     // Save to Firebase and get the head phone number
     const savedComplaint = await saveDepartmentComplaint(complaintData);
 
-    // Send clean confirmation to user
-    await whatsappService.sendTextMessage(from, 
-      `Complaint Submitted Successfully!
+    // Send clean confirmation to user with service menu
+    const confirmationText = `✅ Complaint Submitted Successfully!
 
 Complaint ID: ${complaintId}
 
@@ -675,7 +756,49 @@ What happens next?
      urgency === 'Normal' ? '- Normal Priority: 2-3 business days' : 
      '- Low Priority: Within a week'}
 
-Thank you for helping us improve our services!`);
+Thank you for helping us improve our services!
+
+Would you like to access any other services?`;
+
+    const serviceSections = [
+      {
+        title: "Support Services",
+        rows: [
+          {
+            id: "connect_counselors",
+            title: "Connect with Counselors",
+            description: "Get professional mental health support"
+          },
+          {
+            id: "anonymous_complaints",
+            title: "Anonymous Complaints",
+            description: "Submit anonymous concerns safely"
+          },
+          {
+            id: "department_complaints",
+            title: "Department Complaints",
+            description: "Report department-specific issues"
+          }
+        ]
+      },
+      {
+        title: "Information & Community",
+        rows: [
+          {
+            id: "community",
+            title: "Community Platform",
+            description: "Visit our wellness community website"
+          },
+          {
+            id: "about",
+            title: "About This Service",
+            description: "Learn about our support system"
+          }
+        ]
+      }
+    ];
+
+    await whatsappService.sendListMessage(from, confirmationText, "Select Service", serviceSections);
 
     // Notify department head with direct action buttons
     const headPhoneNumber = savedComplaint.headPhoneNumber || '+919741301245';
