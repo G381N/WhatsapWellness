@@ -746,38 +746,52 @@ async function handleComplaintAction(from, replyId, userName) {
       const dashboardUrl = `https://dashboard.example.com/complaints/${complaintId}`;
       
       await whatsappService.sendTextMessage(from, 
-        `Dashboard Access\n\nClick to view full complaint details:\n${dashboardUrl}`);
+        `Here's the dashboard link: ${dashboardUrl}`);
         
     } else if (replyId.startsWith('message_')) {
       const studentPhone = replyId.replace('message_', '');
       const whatsappUrl = `https://wa.me/${studentPhone}`;
       
       await whatsappService.sendTextMessage(from, 
-        `Student Contact\n\nClick to chat → ${whatsappUrl}`);
+        `Click here to message the student on WhatsApp: ${whatsappUrl}`);
         
     } else if (replyId.startsWith('call_')) {
       const studentPhone = replyId.replace('call_', '');
-      const formattedPhone = studentPhone.startsWith('91') ? 
-        `+${studentPhone}` : `+91${studentPhone}`;
       
       await whatsappService.sendTextMessage(from, 
-        `Student Phone\n\nCall → ${formattedPhone}`);
+        `You can call the student at: ${studentPhone}`);
         
     } else if (replyId.startsWith('acknowledge_')) {
-      // Parse complaint ID and student phone from the acknowledge action
-      // Format: acknowledge_{complaintId}_{studentPhone}
+      // Parse complaint ID, student phone, name, and department from the acknowledge action
+      // Format: acknowledge_{complaintId}_{studentPhone}_{encodedName}_{encodedDepartment}
       const acknowledgeData = replyId.replace('acknowledge_', '');
-      const lastUnderscoreIndex = acknowledgeData.lastIndexOf('_');
-      const complaintId = acknowledgeData.substring(0, lastUnderscoreIndex);
-      const studentPhone = acknowledgeData.substring(lastUnderscoreIndex + 1);
+      const parts = acknowledgeData.split('_');
       
-      // Send acknowledgment to the student
-      await whatsappService.sendTextMessage(studentPhone, 
-        `Hello, your complaint regarding your department has been received.\nWe are reviewing it and will get back to you soon.`);
-      
-      // Confirm to the department head
-      await whatsappService.sendTextMessage(from, 
-        `Acknowledgment Sent\n\nThe student has been notified that their complaint (${complaintId}) was received and is being reviewed.`);
+      if (parts.length >= 4) {
+        const complaintId = parts[0];
+        const studentPhone = parts[1];
+        const studentName = decodeURIComponent(parts[2]);
+        const department = decodeURIComponent(parts[3]);
+        
+        // Send acknowledgment to the student with proper formatting
+        await whatsappService.sendTextMessage(studentPhone, 
+          `Hello ${studentName},\nYour complaint regarding ${department} has been received.\nOur department is reviewing the issue and will get back to you soon.`);
+        
+        // Confirm to the department head
+        await whatsappService.sendTextMessage(from, 
+          `Acknowledgment sent successfully to ${studentName}. They have been notified that their complaint (${complaintId}) is being reviewed.`);
+      } else {
+        // Fallback for old format
+        const lastUnderscoreIndex = acknowledgeData.lastIndexOf('_');
+        const complaintId = acknowledgeData.substring(0, lastUnderscoreIndex);
+        const studentPhone = acknowledgeData.substring(lastUnderscoreIndex + 1);
+        
+        await whatsappService.sendTextMessage(studentPhone, 
+          `Hello,\nYour complaint regarding your department has been received.\nOur department is reviewing the issue and will get back to you soon.`);
+        
+        await whatsappService.sendTextMessage(from, 
+          `Acknowledgment sent successfully to the student. They have been notified that their complaint (${complaintId}) is being reviewed.`);
+      }
     }
   } catch (error) {
     console.error('Error handling complaint action:', error);

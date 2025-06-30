@@ -482,7 +482,7 @@ Please choose an action below:`;
             description: "Tap to call the student directly"
           },
           {
-            id: `acknowledge_${id}_${studentPhone}`,
+            id: `acknowledge_${id}_${studentPhone}_${encodeURIComponent(name)}_${encodeURIComponent(department)}`,
             title: "Acknowledge Complaint",
             description: "Notify the student their complaint was received"
           }
