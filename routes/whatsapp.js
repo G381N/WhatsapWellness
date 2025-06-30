@@ -743,7 +743,7 @@ async function handleComplaintAction(from, replyId, userName) {
   try {
     if (replyId.startsWith('dashboard_')) {
       const complaintId = replyId.replace('dashboard_', '');
-      const dashboardUrl = `https://studentwellness.example.com/complaints/${complaintId}`;
+      const dashboardUrl = `https://student-wellness-gamma.vercel.app/complaints/${complaintId}`;
       
       await whatsappService.sendUrlButtonMessage(from, 
         "Tap below to view the full complaint",
@@ -764,10 +764,9 @@ async function handleComplaintAction(from, replyId, userName) {
       const formattedPhone = studentPhone.startsWith('91') ? 
         `+${studentPhone}` : `+91${studentPhone}`;
       
-      await whatsappService.sendCallButtonMessage(from, 
-        "Tap below to call the student",
-        "Call Now",
-        formattedPhone);
+      // Send a simple text message with the phone number that can be tapped to call
+      await whatsappService.sendTextMessage(from, 
+        `📞 *Call Student*\n\nTap the phone number below to call:\n${formattedPhone}\n\n_Your phone dialer will open automatically when you tap the number._`);
         
     } else if (replyId.startsWith('acknowledge_')) {
       // Parse complaint ID, student phone, name, and department from the acknowledge action
