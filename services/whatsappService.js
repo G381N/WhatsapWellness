@@ -443,94 +443,7 @@ ${completionMessage} What would you like to do next?`;
       hour12: true
     });
 
-    // Send template message with direct action buttons
-    try {
-      const data = {
-        messaging_product: 'whatsapp',
-        to: adminPhoneNumber,
-        type: 'template',
-        template: {
-          name: 'complaint_alert', // You'll need to create this template in WhatsApp Business
-          language: {
-            code: 'en'
-          },
-          components: [
-            {
-              type: 'header',
-              parameters: [
-                {
-                  type: 'text',
-                  text: 'New Complaint Alert'
-                }
-              ]
-            },
-            {
-              type: 'body',
-              parameters: [
-                {
-                  type: 'text',
-                  text: id
-                },
-                {
-                  type: 'text',
-                  text: issueType
-                },
-                {
-                  type: 'text',
-                  text: urgency
-                },
-                {
-                  type: 'text',
-                  text: department
-                },
-                {
-                  type: 'text',
-                  text: name
-                },
-                {
-                  type: 'text',
-                  text: formattedPhone
-                },
-                {
-                  type: 'text',
-                  text: submissionDate
-                }
-              ]
-            },
-            {
-              type: 'button',
-              sub_type: 'url',
-              index: 0,
-              parameters: [
-                {
-                  type: 'text',
-                  text: id
-                }
-              ]
-            },
-            {
-              type: 'button',
-              sub_type: 'url',
-              index: 1,
-              parameters: [
-                {
-                  type: 'text',
-                  text: whatsappPhone
-                }
-              ]
-            }
-          ]
-        }
-      };
-
-      const response = await axios.post(this.baseURL, data, { headers: this.headers });
-      console.log('✅ Template complaint alert sent successfully:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Template message failed, falling back to interactive message:', error.response?.data || error.message);
-      
-      // Fallback to interactive message with direct URL buttons
-      const alertText = `🚨 New Complaint Alert
+    const alertText = `🚨 New Complaint Alert
 
 Complaint ID: ${id}
 Issue Type: ${issueType}
@@ -542,11 +455,11 @@ Submitted On: ${submissionDate}
 
 Please choose an action:`;
 
-      return await this.sendComplaintActionButtons(adminPhoneNumber, id, studentPhone, alertText);
-    }
+    // Send single message with all 3 action buttons
+    return await this.sendComplaintActionButtons(adminPhoneNumber, id, studentPhone, alertText);
   }
 
-  // Send complaint action buttons (fallback method)
+  // Send complaint action buttons - single message with all 3 buttons
   async sendComplaintActionButtons(to, complaintId, studentPhoneNumber, messageText) {
     try {
       const formattedPhone = studentPhoneNumber.startsWith('91') ? 
@@ -557,42 +470,40 @@ Please choose an action:`;
         to: to,
         type: 'interactive',
         interactive: {
-          type: 'cta_url',
+          type: 'button',
           body: {
             text: messageText
           },
           action: {
-            name: 'cta_url',
-            parameters: {
-              display_text: 'Open Dashboard',
-              url: `https://student-wellness-gamma.vercel.app/complaints/${complaintId}`
-            }
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: `dashboard_url_${complaintId}`,
+                  title: '📊 Open Dashboard'
+                }
+              },
+              {
+                type: 'reply',
+                reply: {
+                  id: `whatsapp_url_${studentPhoneNumber}`,
+                  title: '💬 Message Student'
+                }
+              },
+              {
+                type: 'reply',
+                reply: {
+                  id: `call_url_${studentPhoneNumber}`,
+                  title: '📞 Call Student'
+                }
+              }
+            ]
           }
         }
       };
 
       const response = await axios.post(this.baseURL, data, { headers: this.headers });
-      console.log('✅ Complaint action buttons sent successfully:', response.data);
-      
-      // Send additional WhatsApp and call buttons separately
-      setTimeout(async () => {
-        await this.sendDirectUrlButton(
-          to,
-          `Contact Student: +${formattedPhone}`,
-          "Message on WhatsApp",
-          `https://wa.me/${formattedPhone}`
-        );
-      }, 1000);
-
-      setTimeout(async () => {
-        await this.sendTextMessage(
-          to,
-          `📞 Call Student: ${formattedPhone.startsWith('+') ? formattedPhone : '+' + formattedPhone}
-
-Tap the number above to call directly.`
-        );
-      }, 2000);
-
+      console.log('✅ Single complaint alert with all action buttons sent successfully:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error sending complaint action buttons:', error.response?.data || error.message);
@@ -600,7 +511,7 @@ Tap the number above to call directly.`
     }
   }
 
-  // Handle complaint management actions
+  // Handle complaint management actions - simplified for direct actions
   async handleComplaintAction(from, action, actionData) {
     const actionParts = action.split('_');
     const actionType = actionParts[0];
