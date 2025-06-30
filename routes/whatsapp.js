@@ -189,18 +189,6 @@ async function handleInteractiveMessage(from, interactive, userName) {
     return;
   }
 
-  // Handle direct call button responses
-  if (replyId.startsWith('direct_call_')) {
-    const phoneNumber = replyId.replace('direct_call_', '');
-    const formattedPhone = phoneNumber.startsWith('91') ? 
-      `+${phoneNumber}` : `+91${phoneNumber}`;
-    
-    // Send a message with clickable phone number that opens dialer
-    await whatsappService.sendTextMessage(from, 
-      `📞 *Calling Student*\n\nTap this number to open dialer:\n${formattedPhone}`);
-    return;
-  }
-
   switch (replyId) {
     case 'connect_counselors':
       await startCounselorFlow(from, userName);

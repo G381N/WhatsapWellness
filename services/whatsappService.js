@@ -468,23 +468,23 @@ Please choose an action below:`;
         rows: [
           {
             id: `dashboard_${id}`,
-            title: "Open Dashboard",
-            description: "View full complaint on the web"
+            title: "View Complaint",
+            description: "Open the complaint dashboard"
           },
           {
             id: `message_${studentPhone}`,
-            title: "Message Student", 
-            description: "Open WhatsApp chat with the student"
+            title: "Message", 
+            description: "Send WhatsApp message to student"
           },
           {
             id: `call_${studentPhone}`,
-            title: "Call Student",
-            description: "Tap to call the student directly"
+            title: "Call Now",
+            description: "Call the student directly"
           },
           {
             id: `acknowledge_${id}_${studentPhone}_${encodeURIComponent(name)}_${encodeURIComponent(department)}`,
-            title: "Acknowledge Complaint",
-            description: "Notify the student their complaint was received"
+            title: "Acknowledge",
+            description: "Send acknowledgment to student"
           }
         ]
       }
@@ -538,10 +538,10 @@ Please choose an action below:`;
     }
   }
 
-  // Send interactive call button that opens dialer directly
+  // Send native call button that opens dialer directly
   async sendInteractiveCallButton(to, phoneNumber) {
     try {
-      // Create an interactive button with the phone number as a clickable action
+      // Create a native phone button that opens dialer directly
       const data = {
         messaging_product: 'whatsapp',
         to: to,
@@ -554,11 +554,9 @@ Please choose an action below:`;
           action: {
             buttons: [
               {
-                type: 'reply',
-                reply: {
-                  id: `direct_call_${phoneNumber.replace(/\D/g, '')}`,
-                  title: `📞 Call Now`
-                }
+                type: 'phone_number',
+                text: 'Call Now',
+                phone_number: phoneNumber
               }
             ]
           }
@@ -566,11 +564,11 @@ Please choose an action below:`;
       };
 
       const response = await axios.post(this.baseURL, data, { headers: this.headers });
-      console.log('✅ Interactive call button sent successfully:', response.data);
+      console.log('✅ Native call button sent successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error sending interactive call button:', error.response?.data || error.message);
-      // Fallback to simple text message if interactive button fails
+      console.error('❌ Error sending native call button:', error.response?.data || error.message);
+      // Fallback to simple text message if native button fails
       await this.sendTextMessage(to, 
         `📞 *Call Student*\n\nTap the phone number below to call:\n${phoneNumber}\n\n_Your phone dialer will open automatically when you tap the number._`);
     }
