@@ -100,11 +100,11 @@ class WhatsAppService {
   async sendWelcomeMessage(to, userName) {
     const welcomeText = `Hello ${userName}!
 
-Welcome to *Christ University Student Wellness Support System*
+Welcome to Christ University Student Wellness Support System
 
-*Privacy Notice:* This WhatsApp chat is completely anonymous and confidential. Your conversations are secure and private.
+Privacy Notice: This WhatsApp chat is completely anonymous and confidential. Your conversations are secure and private.
 
-*We're here for you!* This platform is designed to:
+We're here for you! This platform is designed to:
 • Connect you with professional counselors
 • Provide a safe space for concerns and complaints
 • Offer mental health support and resources
@@ -270,13 +270,13 @@ Please select an option from the menu below:`;
         interactive: {
           type: 'button',
           body: {
-            text: `*Priority Level Selection*
+            text: `Priority Level Selection
 
 How urgent is this issue? Please choose one of the following:
 
-• **High:** Requires immediate attention (within 24 hours)
-• **Normal:** Standard processing time (2-3 business days)  
-• **Low:** Non-urgent matter (within a week)
+• High: Requires immediate attention (within 24 hours)
+• Normal: Standard processing time (2-3 business days)  
+• Low: Non-urgent matter (within a week)
 
 Your selection helps us prioritize and respond appropriately.`
           },
@@ -415,20 +415,22 @@ Please choose an action:`;
       }
     ];
 
-    const menuText = `✅ *Service Completed*
+    const menuText = `✅ Service Completed
 
 ${completionMessage} What would you like to do next?`;
 
     return await this.sendListMessage(to, menuText, "Explore More Services", sections);
   }
 
-  // Send notification to HOD/Admin about new complaint with enhanced format
+  // Send notification to HOD/Admin about new complaint with enhanced format using template message
   async notifyComplaintToAdmin(adminPhoneNumber, complaintData) {
-    const { id, studentPhone, department, issueType, description, urgency, name } = complaintData;
+    const { id, studentPhone, department, issueType, urgency, name } = complaintData;
     
-    // Format phone number for display
+    // Format phone number for display and WhatsApp URL
     const formattedPhone = studentPhone.startsWith('91') ? 
       `+${studentPhone}` : `+91${studentPhone}`;
+    const whatsappPhone = studentPhone.startsWith('91') ? 
+      studentPhone : `91${studentPhone}`;
     
     // Format submission date
     const submissionDate = new Date().toLocaleString('en-IN', {
@@ -441,25 +443,161 @@ ${completionMessage} What would you like to do next?`;
       hour12: true
     });
 
-    const alertText = `🚨 *New Complaint Alert*
+    // Send template message with direct action buttons
+    try {
+      const data = {
+        messaging_product: 'whatsapp',
+        to: adminPhoneNumber,
+        type: 'template',
+        template: {
+          name: 'complaint_alert', // You'll need to create this template in WhatsApp Business
+          language: {
+            code: 'en'
+          },
+          components: [
+            {
+              type: 'header',
+              parameters: [
+                {
+                  type: 'text',
+                  text: 'New Complaint Alert'
+                }
+              ]
+            },
+            {
+              type: 'body',
+              parameters: [
+                {
+                  type: 'text',
+                  text: id
+                },
+                {
+                  type: 'text',
+                  text: issueType
+                },
+                {
+                  type: 'text',
+                  text: urgency
+                },
+                {
+                  type: 'text',
+                  text: department
+                },
+                {
+                  type: 'text',
+                  text: name
+                },
+                {
+                  type: 'text',
+                  text: formattedPhone
+                },
+                {
+                  type: 'text',
+                  text: submissionDate
+                }
+              ]
+            },
+            {
+              type: 'button',
+              sub_type: 'url',
+              index: 0,
+              parameters: [
+                {
+                  type: 'text',
+                  text: id
+                }
+              ]
+            },
+            {
+              type: 'button',
+              sub_type: 'url',
+              index: 1,
+              parameters: [
+                {
+                  type: 'text',
+                  text: whatsappPhone
+                }
+              ]
+            }
+          ]
+        }
+      };
 
-*Complaint ID:* ${id}
-*Issue Type:* ${issueType}
-*Urgency:* ${urgency}
-*Department:* ${department}
-*Raised By:* ${name}
-*Phone:* ${formattedPhone}
-*Submitted On:* ${submissionDate}
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Template complaint alert sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Template message failed, falling back to interactive message:', error.response?.data || error.message);
+      
+      // Fallback to interactive message with direct URL buttons
+      const alertText = `🚨 New Complaint Alert
+
+Complaint ID: ${id}
+Issue Type: ${issueType}
+Urgency: ${urgency}
+Department: ${department}
+Raised By: ${name}
+Phone: ${formattedPhone}
+Submitted On: ${submissionDate}
 
 Please choose an action:`;
 
-    // Send direct action buttons
-    return await this.sendDirectActionButtons(
-      adminPhoneNumber, 
-      id, 
-      studentPhone, 
-      alertText
-    );
+      return await this.sendComplaintActionButtons(adminPhoneNumber, id, studentPhone, alertText);
+    }
+  }
+
+  // Send complaint action buttons (fallback method)
+  async sendComplaintActionButtons(to, complaintId, studentPhoneNumber, messageText) {
+    try {
+      const formattedPhone = studentPhoneNumber.startsWith('91') ? 
+        studentPhoneNumber : `91${studentPhoneNumber}`;
+
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: {
+            text: messageText
+          },
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: 'Open Dashboard',
+              url: `https://student-wellness-gamma.vercel.app/complaints/${complaintId}`
+            }
+          }
+        }
+      };
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Complaint action buttons sent successfully:', response.data);
+      
+      // Send additional WhatsApp and call buttons separately
+      setTimeout(async () => {
+        await this.sendDirectUrlButton(
+          to,
+          `Contact Student: +${formattedPhone}`,
+          "Message on WhatsApp",
+          `https://wa.me/${formattedPhone}`
+        );
+      }, 1000);
+
+      setTimeout(async () => {
+        await this.sendTextMessage(
+          to,
+          `📞 Call Student: ${formattedPhone.startsWith('+') ? formattedPhone : '+' + formattedPhone}
+
+Tap the number above to call directly.`
+        );
+      }, 2000);
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending complaint action buttons:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   // Handle complaint management actions
@@ -472,13 +610,12 @@ Please choose an action:`;
     switch (actionType) {
       case 'dashboard':
         if (urlType === 'url') {
-          // Send direct URL button for dashboard
           const complaintId = targetData;
-          const dashboardUrl = `https://student-wellness-gamma.vercel.app/`;
+          const dashboardUrl = `https://student-wellness-gamma.vercel.app/complaints/${complaintId}`;
           
           return await this.sendDirectUrlButton(
             from,
-            `📊 *Dashboard Access*\n\n*Complaint ID:* ${complaintId}\n\nClick the button below to open the dashboard directly:`,
+            `📊 Dashboard Access\n\nComplaint ID: ${complaintId}\n\nClick the button below to open the complaint dashboard:`,
             "🔗 Open Dashboard",
             dashboardUrl
           );
@@ -487,14 +624,13 @@ Please choose an action:`;
 
       case 'whatsapp':
         if (urlType === 'url') {
-          // Send direct WhatsApp URL button
           const studentPhone = targetData;
           const formattedPhone = studentPhone.startsWith('91') ? studentPhone : `91${studentPhone}`;
           const whatsappUrl = `https://wa.me/${formattedPhone}`;
           
           return await this.sendDirectUrlButton(
             from,
-            `💬 *Direct Message Student*\n\n*Student Phone:* +${formattedPhone}\n\nClick the button below to open WhatsApp chat directly:`,
+            `💬 Direct Message Student\n\nStudent Phone: +${formattedPhone}\n\nClick the button below to open WhatsApp chat:`,
             "💬 Open WhatsApp Chat",
             whatsappUrl
           );
@@ -503,16 +639,12 @@ Please choose an action:`;
 
       case 'call':
         if (urlType === 'url') {
-          // Send direct call URL button
           const studentPhone = targetData;
           const formattedPhone = studentPhone.startsWith('91') ? `+${studentPhone}` : `+91${studentPhone}`;
-          const telUrl = `tel:${formattedPhone}`;
           
-          return await this.sendDirectUrlButton(
+          return await this.sendTextMessage(
             from,
-            `📞 *Call Student Directly*\n\n*Student Phone:* ${formattedPhone}\n\nClick the button below to open your phone dialer:`,
-            "📞 Call Now",
-            telUrl
+            `📞 Call Student Directly\n\nStudent Phone: ${formattedPhone}\n\nTap the number above to call directly from WhatsApp.`
           );
         }
         break;

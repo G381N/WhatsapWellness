@@ -251,13 +251,13 @@ async function handleInteractiveMessage(from, interactive, userName) {
 }
 
 async function startCounselorFlow(from, userName) {
-  const introText = `*Professional Counseling Service*
+  const introText = `Professional Counseling Service
 
 Hello ${userName}! Welcome to our confidential counseling service.
 
 I'll guide you through a brief assessment to help match you with the most suitable counselor for your needs. This process typically takes 2-3 minutes and ensures you receive personalized support.
 
-*Your privacy is our priority:*
+Your privacy is our priority:
 • All information shared is strictly confidential
 • Only qualified counselors will have access
 • Your responses help us provide better support
@@ -372,16 +372,16 @@ async function handleCounselorInteractiveResponse(from, replyId, userName) {
 async function showCounselorRequestSummary(from, userName) {
   const userData = sessionManager.getAllData(from);
   
-  const summaryText = `*Counseling Request Summary*
+  const summaryText = `Counseling Request Summary
 
-*Name:* ${userName}
-*Phone:* ${from}
+Name: ${userName}
+Phone: ${from}
 
-*Issue Description:* ${userData.issue_description}
-*Duration:* ${userData.issue_duration}
-*Previous Help:* ${userData.previous_help}
-*Urgency:* ${userData.urgency_level}
-*Preferred Contact:* ${userData.preferred_contact}
+Issue Description: ${userData.issue_description}
+Duration: ${userData.issue_duration}
+Previous Help: ${userData.previous_help}
+Urgency: ${userData.urgency_level}
+Preferred Contact: ${userData.preferred_contact}
 
 Please review your information and confirm to submit your counseling request.`;
 
@@ -414,31 +414,31 @@ async function submitCounselorRequest(from, userName) {
 
     // Send confirmation to user
     await whatsappService.sendTextMessage(from, 
-      `*Counseling Request Submitted Successfully!*
+      `Counseling Request Submitted Successfully!
 
 Thank you ${userName}! Your counseling request has been submitted to our professional counselors.
 
-**What happens next?**
+What happens next?
 • A counselor will review your request
 • You'll be contacted within 24-48 hours
 • They'll schedule a session based on your preferred contact method
 
 Remember, you're taking a positive step towards your mental wellness. We're here to support you!`);
 
-    // Send notification to counselor with interactive button
-    const counselorMessage = `*New Counseling Request*
+    // Send notification to counselor
+    const counselorMessage = `New Counseling Request
 
-**Student:** ${userName}
-**Phone:** ${from}
+Student: ${userName}
+Phone: ${from}
 
-**Request Details:**
+Request Details:
 • Issue: ${userData.issue_description}
 • Duration: ${userData.issue_duration}
 • Previous Help: ${userData.previous_help}
 • Urgency: ${userData.urgency_level}
 • Preferred Contact: ${userData.preferred_contact}
 
-**Submitted:** ${new Date().toLocaleString()}
+Submitted: ${new Date().toLocaleString()}
 
 Please contact the student to schedule a counseling session.`;
 
@@ -465,9 +465,9 @@ Please contact the student to schedule a counseling session.`;
 }
 
 async function startAnonymousComplaintFlow(from, userName) {
-  const disclaimerText = `*Anonymous Complaints*
+  const disclaimerText = `Anonymous Complaints
 
-*Important Disclaimer:*
+Important Disclaimer:
 • This complaint will be completely anonymous
 • Only university-level administrators will have access to review this complaint
 • Your identity will NOT be shared with anyone
@@ -507,13 +507,13 @@ async function handleAnonymousComplaint(from, complaintText, userName) {
     await saveAnonymousComplaint(complaintData);
 
     await whatsappService.sendTextMessage(from, 
-      `*Anonymous Complaint Submitted Successfully*
+      `Anonymous Complaint Submitted Successfully
 
-**Complaint ID:** ${complaintId}
+Complaint ID: ${complaintId}
 
 Thank you for bringing this to our attention. Your complaint has been submitted anonymously to the university administrators and is now integrated with our main system.
 
-**Your Privacy is Protected:**
+Your Privacy is Protected:
 • Your identity remains completely anonymous
 • Only authorized administrators can access this complaint  
 • Integrated with the main wellness platform for faster resolution
@@ -525,7 +525,7 @@ Thank you for helping us improve our university environment.`);
     const adminPhoneNumber = '919741301245';
     await whatsappService.notifyComplaintToAdmin(adminPhoneNumber, complaintData);
 
-    // Reset session
+    // Reset session and show completion menu
     sessionManager.setState(from, 'initial');
     
     // Show service completion menu instead of static message
@@ -552,14 +552,14 @@ async function startDepartmentComplaintInput(from, userName) {
   const urgency = sessionManager.getData(from, 'selectedUrgency');
   
   await whatsappService.sendTextMessage(from, 
-    `*Department Complaint*
+    `Department Complaint
 
-**Department:** ${department}
-**Priority:** ${urgency}
+Department: ${department}
+Priority: ${urgency}
 
 Please describe your complaint or concern related to this department. Be as detailed as possible to help us address your issue effectively.
 
-*Take your time to provide all relevant details.*`);
+Take your time to provide all relevant details.`);
   
   sessionManager.setState(from, 'department_complaint_input');
 }
@@ -568,14 +568,14 @@ async function handleDepartmentComplaint(from, complaintText, userName) {
   const department = sessionManager.getData(from, 'selectedDepartment');
   const urgency = sessionManager.getData(from, 'selectedUrgency');
   
-  const summaryText = `*Department Complaint Summary*
+  const summaryText = `Department Complaint Summary
 
-**Name:** ${userName}
-**Phone:** ${from}
-**Department:** ${department}
-**Priority:** ${urgency}
+Name: ${userName}
+Phone: ${from}
+Department: ${department}
+Priority: ${urgency}
 
-**Complaint:**
+Complaint:
 ${complaintText}
 
 Please review and confirm to submit your complaint to the department head.`;
@@ -620,23 +620,23 @@ async function submitDepartmentComplaint(from, userName) {
     // Save to Firebase and get the head phone number
     const savedComplaint = await saveDepartmentComplaint(complaintData);
 
-    // Send confirmation to user
+    // Send clean confirmation to user
     await whatsappService.sendTextMessage(from, 
-      `*Complaint Submitted Successfully!*
+      `Complaint Submitted Successfully!
 
-**Complaint ID:** ${complaintId}
+Complaint ID: ${complaintId}
 
-Thank you ${userName}! Your complaint regarding ${department} has been submitted and forwarded to the department head.
+Thank you, ${userName}! Your complaint regarding ${department} has been successfully submitted and forwarded to the department head.
 
-**Priority Level:** ${urgency}
+Priority Level: ${urgency}
 
-**What happens next?**
+What happens next?
 • Your complaint will be reviewed by department representatives
-• The department head has been notified via WhatsApp with management tools
+• The department head has been notified via WhatsApp
 • Expected response time based on priority:
-  ${urgency === 'High' ? '• **High Priority:** Within 24 hours' : 
-    urgency === 'Normal' ? '• **Normal Priority:** 2-3 business days' : 
-    '• **Low Priority:** Within a week'}
+   ${urgency === 'High' ? '- High Priority: Within 24 hours' : 
+     urgency === 'Normal' ? '- Normal Priority: 2-3 business days' : 
+     '- Low Priority: Within a week'}
 
 Thank you for helping us improve our services!`);
 
@@ -662,7 +662,7 @@ Thank you for helping us improve our services!`);
 
 async function handleCommunityRedirect(from, userName) {
   await whatsappService.sendTextMessage(from, 
-    `*Community Platform*
+    `Community Platform
 
 Hello ${userName}! Visit our wellness community platform to:
 
@@ -671,7 +671,7 @@ Hello ${userName}! Visit our wellness community platform to:
 • Join wellness activities
 • Share experiences safely
 
-**Website:** ${process.env.COMMUNITY_WEBSITE || 'https://student-wellness-gamma.vercel.app'}
+Website: ${process.env.COMMUNITY_WEBSITE || 'https://student-wellness-gamma.vercel.app'}
 
 Join our supportive community today!`);
   
@@ -683,31 +683,31 @@ Join our supportive community today!`);
 }
 
 async function handleAboutInfo(from, userName) {
-  const aboutText = `*About Christ University Student Wellness Support System*
+  const aboutText = `About Christ University Student Wellness Support System
 
-**Our Mission:**
+Our Mission:
 We're dedicated to providing comprehensive mental health support for Christ University students.
 
-**What We Offer:**
+What We Offer:
 • Professional counseling services
 • Anonymous complaint system
 • Department-specific support
 • Mental wellness resources
 • Supportive community platform
 
-**Privacy & Safety:**
+Privacy & Safety:
 • All conversations are confidential
 • Anonymous options available
 • Professional counselors
 • 24/7 support access
 
-**Our Commitment:**
+Our Commitment:
 Your mental health and well-being are our top priorities. We're here to support you through every step of your academic journey.
 
-**Contact:** This WhatsApp bot
-**Website:** ${process.env.COMMUNITY_WEBSITE || 'https://student-wellness-gamma.vercel.app'}
+Contact: This WhatsApp bot
+Website: ${process.env.COMMUNITY_WEBSITE || 'https://student-wellness-gamma.vercel.app'}
 
-**Remember: Seeking help is a sign of strength, not weakness.**`;
+Remember: Seeking help is a sign of strength, not weakness.`;
 
   await whatsappService.sendTextMessage(from, aboutText);
   
