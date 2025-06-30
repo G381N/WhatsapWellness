@@ -538,41 +538,39 @@ Please choose an action below:`;
     }
   }
 
-  // Send interactive call button that opens dialer when pressed
+  // Send direct call button that opens dialer immediately
   async sendInteractiveCallButton(to, phoneNumber) {
     try {
-      // Create an interactive button that will send a clickable phone number when pressed
+      // Use tel: URL to directly open dialer - this is what was working before
+      const telUrl = `tel:${phoneNumber}`;
+      
       const data = {
         messaging_product: 'whatsapp',
         to: to,
         type: 'interactive',
         interactive: {
-          type: 'button',
+          type: 'cta_url',
           body: {
-            text: `📞 *Call Student*\n\nTap the button below to call:\n${phoneNumber}\n\n_Your phone dialer will open when you tap the number._`
+            text: `Call Student: ${phoneNumber}`
           },
           action: {
-            buttons: [
-              {
-                type: 'reply',
-                reply: {
-                  id: `direct_call_${phoneNumber.replace(/\D/g, '')}`,
-                  title: `📞 Call Now`
-                }
-              }
-            ]
+            name: 'cta_url',
+            parameters: {
+              display_text: 'Call Now',
+              url: telUrl
+            }
           }
         }
       };
 
       const response = await axios.post(this.baseURL, data, { headers: this.headers });
-      console.log('✅ Interactive call button sent successfully:', response.data);
+      console.log('✅ Direct call button sent successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error sending interactive call button:', error.response?.data || error.message);
-      // Fallback to simple text message if interactive button fails
+      console.error('❌ Error sending direct call button:', error.response?.data || error.message);
+      // Fallback to simple text message
       await this.sendTextMessage(to, 
-        `📞 *Call Student*\n\nTap the phone number below to call:\n${phoneNumber}\n\n_Your phone dialer will open automatically when you tap the number._`);
+        `Call Student: ${phoneNumber}\n\nTap the number above to call directly.`);
     }
   }
 }
