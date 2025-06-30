@@ -290,46 +290,93 @@ Please choose an action:`;
   async notifyComplaintToAdmin(adminPhoneNumber, complaintData) {
     const { id, studentPhone, department, issueType, description, urgency } = complaintData;
     
-    const notificationText = `🚨 *New Complaint Alert*
-
-*Complaint ID:* ${id}
-*Department:* ${department}
-*Issue Type:* ${issueType}
-*Urgency:* ${urgency}
-*Description:* ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}
-
-*Submitted by:* Student (Anonymous)
-*Time:* ${new Date().toLocaleString()}`;
-
-    // First send the notification text
-    await this.sendTextMessage(adminPhoneNumber, notificationText);
-
-    // Then send the management buttons
-    return await this.sendComplaintManagementButtons(
+    // Send the complaint notification with direct action buttons
+    return await this.sendDirectActionButtons(
       adminPhoneNumber, 
       id, 
       studentPhone, 
-      `${issueType} - ${urgency}`
+      `${issueType} - ${urgency} - ${department}`
     );
   }
 
   // Handle complaint management actions
   async handleComplaintAction(from, action, actionData) {
-    const [actionType, targetData] = action.split('_');
+    const actionParts = action.split('_');
+    const actionType = actionParts[0];
+    const urlType = actionParts[1];
+    const targetData = actionParts.slice(2).join('_');
 
     switch (actionType) {
       case 'dashboard':
-        const complaintId = targetData;
-        const dashboardUrl = `https://student-wellness-gamma.vercel.app/dashboard?complaint=${complaintId}`;
-        
-        return await this.sendUrlButtonMessage(
-          from,
-          `Opening dashboard for Complaint ID: *${complaintId}*\n\nClick the button below to review and manage this complaint:`,
-          "🔗 Open Dashboard",
-          dashboardUrl
-        );
+        if (urlType === 'url') {
+          // Send direct URL button for dashboard
+          const complaintId = targetData;
+          const dashboardUrl = `https://student-wellness-gamma.vercel.app/dashboard?complaint=${complaintId}`;
+          
+          return await this.sendDirectUrlButton(
+            from,
+            `📊 *Dashboard Access*\n\nComplaint ID: *${complaintId}*\n\nClick the button below to open the dashboard directly:`,
+            "🔗 Open Dashboard",
+            dashboardUrl
+          );
+        } else {
+          // Fallback to old method
+          const complaintId = targetData;
+          const dashboardUrl = `https://student-wellness-gamma.vercel.app/dashboard?complaint=${complaintId}`;
+          
+          return await this.sendUrlButtonMessage(
+            from,
+            `Opening dashboard for Complaint ID: *${complaintId}*\n\nClick the button below to review and manage this complaint:`,
+            "🔗 Open Dashboard",
+            dashboardUrl
+          );
+        }
+
+      case 'whatsapp':
+        if (urlType === 'url') {
+          // Send direct WhatsApp URL button
+          const studentPhone = targetData;
+          const formattedPhone = studentPhone.startsWith('91') ? studentPhone : `91${studentPhone}`;
+          const whatsappUrl = `https://wa.me/${formattedPhone}`;
+          
+          return await this.sendDirectUrlButton(
+            from,
+            `💬 *Direct Message Student*\n\nStudent Phone: *+${formattedPhone}*\n\nClick the button below to open WhatsApp chat directly:`,
+            "💬 Open WhatsApp Chat",
+            whatsappUrl
+          );
+        }
+        break;
+
+      case 'call':
+        if (urlType === 'url') {
+          // Send direct call URL button
+          const studentPhone = targetData;
+          const formattedPhone = studentPhone.startsWith('91') ? `+${studentPhone}` : `+91${studentPhone}`;
+          const telUrl = `tel:${formattedPhone}`;
+          
+          return await this.sendDirectUrlButton(
+            from,
+            `📞 *Call Student Directly*\n\nStudent Phone: *${formattedPhone}*\n\nClick the button below to open your phone dialer:`,
+            "📞 Call Now",
+            telUrl
+          );
+        } else {
+          // Fallback to old method
+          const phoneToCall = targetData;
+          const callText = `📞 *Ready to Call Student*
+
+Student Phone: *${phoneToCall}*
+
+Click the number above in WhatsApp to call directly, or copy the number to your phone dialer.
+
+*Alternative:* You can also use the Call button below to open your phone's dialer automatically.`;
+
+          return await this.sendTextMessage(from, callText);
+        }
 
       case 'chat':
+        // Handle old chat method
         const studentPhone = targetData;
         const chatMessage = `You can now contact the student directly at: *${studentPhone}*\n\nType your message and I'll help you send it to the student, or use WhatsApp's direct messaging feature.`;
         
@@ -357,18 +404,6 @@ Please choose an action:`;
           "Choose a quick response or type your custom message:",
           quickResponseButtons
         );
-
-      case 'call':
-        const phoneToCall = targetData;
-        const callText = `📞 *Ready to Call Student*
-
-Student Phone: *${phoneToCall}*
-
-Click the number above in WhatsApp to call directly, or copy the number to your phone dialer.
-
-*Alternative:* You can also use the Call button below to open your phone's dialer automatically.`;
-
-        return await this.sendTextMessage(from, callText);
 
       case 'quick':
         // Handle quick response actions
@@ -437,6 +472,96 @@ Christ University Wellness Team`;
       adminPhone, 
       `✅ Message sent to student (${studentPhone})\n\n📝 *Message sent:*\n"${responseMessage.substring(0, 100)}..."`
     );
+  }
+
+  // Send interactive message with URL buttons for direct actions
+  async sendDirectActionButtons(to, complaintId, studentPhoneNumber, complaintSummary) {
+    try {
+      // Format phone number for international format (assuming Indian numbers)
+      const formattedPhone = studentPhoneNumber.startsWith('91') ? 
+        `+${studentPhoneNumber}` : `+91${studentPhoneNumber}`;
+      
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: `🚨 *New Complaint Alert*
+
+*Complaint ID:* ${complaintId}
+*Summary:* ${complaintSummary}
+*Submitted:* ${new Date().toLocaleString()}
+
+Choose an action below:`
+          },
+          action: {
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: `dashboard_url_${complaintId}`,
+                  title: '📊 Open Dashboard'
+                }
+              },
+              {
+                type: 'reply', 
+                reply: {
+                  id: `whatsapp_url_${studentPhoneNumber}`,
+                  title: '💬 Message Student'
+                }
+              },
+              {
+                type: 'reply',
+                reply: {
+                  id: `call_url_${studentPhoneNumber}`,
+                  title: '📞 Call Student'
+                }
+              }
+            ]
+          }
+        }
+      };
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Direct action buttons sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending direct action buttons:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Send URL button message that opens directly
+  async sendDirectUrlButton(to, bodyText, buttonText, url, buttonType = 'url') {
+    try {
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: {
+            text: bodyText
+          },
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: buttonText,
+              url: url
+            }
+          }
+        }
+      };
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Direct URL button sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending direct URL button:', error.response?.data || error.message);
+      throw error;
+    }
   }
 }
 

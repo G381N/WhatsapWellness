@@ -128,7 +128,8 @@ async function handleInteractiveMessage(from, interactive, userName) {
   const replyId = buttonReply?.id || listReply?.id;
 
   // Handle complaint management actions (dashboard, chat, call)
-  if (replyId.startsWith('dashboard_') || replyId.startsWith('chat_') || replyId.startsWith('call_') || replyId.startsWith('quick_')) {
+  if (replyId.startsWith('dashboard_') || replyId.startsWith('chat_') || replyId.startsWith('call_') || 
+      replyId.startsWith('whatsapp_') || replyId.startsWith('quick_')) {
     await whatsappService.handleComplaintAction(from, replyId);
     return;
   }
