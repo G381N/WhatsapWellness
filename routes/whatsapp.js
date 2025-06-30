@@ -640,18 +640,12 @@ Would you like to access any other services?`;
 
     await whatsappService.sendListMessage(from, anonymousConfirmationText, "Select Service", anonymousServiceSections);
 
-    // Notify admin with interactive buttons for anonymous complaints too
-    const adminPhoneNumber = '919741301245';
-    await whatsappService.notifyComplaintToAdmin(adminPhoneNumber, complaintData);
+    // Anonymous complaints are only stored in Firebase for admin dashboard viewing
+    // No WhatsApp notifications are sent to maintain complete anonymity
+    console.log(`✅ Anonymous complaint ${complaintId} stored successfully in Firebase for admin dashboard review`);
 
-    // Reset session and show completion menu
+    // Reset session
     sessionManager.setState(from, 'initial');
-    
-    // Show service completion menu instead of static message
-    setTimeout(async () => {
-      await whatsappService.sendServiceCompletionMenu(from,
-        "Your anonymous complaint has been processed securely.");
-    }, 2000);
 
   } catch (error) {
     console.error('Error submitting anonymous complaint (Developer: Gebin George):', error);
