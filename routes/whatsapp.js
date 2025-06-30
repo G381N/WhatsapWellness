@@ -745,21 +745,29 @@ async function handleComplaintAction(from, replyId, userName) {
       const complaintId = replyId.replace('dashboard_', '');
       const dashboardUrl = `https://dashboard.example.com/complaints/${complaintId}`;
       
-      await whatsappService.sendTextMessage(from, 
-        `Here's the dashboard link: ${dashboardUrl}`);
+      await whatsappService.sendUrlButtonMessage(from, 
+        "Tap below to view the full complaint",
+        "View Complaint",
+        dashboardUrl);
         
     } else if (replyId.startsWith('message_')) {
       const studentPhone = replyId.replace('message_', '');
       const whatsappUrl = `https://wa.me/${studentPhone}`;
       
-      await whatsappService.sendTextMessage(from, 
-        `Click here to message the student on WhatsApp: ${whatsappUrl}`);
+      await whatsappService.sendUrlButtonMessage(from, 
+        "Tap below to message the student",
+        "Message on WhatsApp",
+        whatsappUrl);
         
     } else if (replyId.startsWith('call_')) {
       const studentPhone = replyId.replace('call_', '');
+      const formattedPhone = studentPhone.startsWith('91') ? 
+        `+${studentPhone}` : `+91${studentPhone}`;
       
-      await whatsappService.sendTextMessage(from, 
-        `You can call the student at: ${studentPhone}`);
+      await whatsappService.sendCallButtonMessage(from, 
+        "Tap below to call the student",
+        "Call Now",
+        formattedPhone);
         
     } else if (replyId.startsWith('acknowledge_')) {
       // Parse complaint ID, student phone, name, and department from the acknowledge action

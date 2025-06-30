@@ -537,6 +537,39 @@ Please choose an action below:`;
       throw error;
     }
   }
+
+  // Send call button message
+  async sendCallButtonMessage(to, bodyText, buttonText, phoneNumber) {
+    try {
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: bodyText
+          },
+          action: {
+            buttons: [
+              {
+                type: 'phone_number',
+                phone_number: phoneNumber,
+                text: buttonText
+              }
+            ]
+          }
+        }
+      };
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Call button message sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending call button message:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new WhatsAppService(); 
