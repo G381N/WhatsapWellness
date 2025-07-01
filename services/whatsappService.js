@@ -573,6 +573,91 @@ Please choose an action below:`;
         `Call Student: ${phoneNumber}\n\nTap the number above to call directly.`);
     }
   }
+
+  // Send template message (for messaging users who haven't initiated contact)
+  async sendTemplateMessage(to, templateName, templateParams = [], languageCode = 'en') {
+    try {
+      const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: {
+            code: languageCode
+          }
+        }
+      };
+
+      // Add parameters if provided
+      if (templateParams.length > 0) {
+        data.template.components = [{
+          type: 'body',
+          parameters: templateParams.map(param => ({
+            type: 'text',
+            text: param
+          }))
+        }];
+      }
+
+      const response = await axios.post(this.baseURL, data, { headers: this.headers });
+      console.log('✅ Template message sent successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error sending template message:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Send counselor notification (handles both new and existing counselors)
+  async sendCounselorNotification(counselorPhone, studentName, studentPhone, sessionId, issueDescription, urgencyLevel) {
+    try {
+      // First try to send an interactive message (for counselors who have interacted before)
+      const counselorMessage = `🆕 New Counseling Session Request
+
+📋 Student Details:
+• Name: ${studentName}
+• Phone: ${studentPhone}
+• Urgency: ${urgencyLevel}
+
+💭 Request Details:
+• Issue: ${issueDescription}
+• Session ID: ${sessionId}
+
+⏰ Submitted: ${new Date().toLocaleString('en-IN')}
+
+👨‍⚕️ Action Required:
+Please review this counseling request and take appropriate action.`;
+
+      const counselorButtons = [
+        { id: `call_${studentPhone}`, title: 'Call Now' },
+        { id: `message_${studentPhone}`, title: 'Message' },
+        { id: `counselor_ack_${sessionId}_${studentPhone}`, title: 'Acknowledge' }
+      ];
+
+      return await this.sendButtonMessage(counselorPhone.replace(/\D/g, ''), counselorMessage, counselorButtons);
+      
+    } catch (error) {
+      console.log('⚠️ Interactive message failed, trying template message for new counselor...');
+      
+      try {
+        // Fallback: Send template message for new counselors
+        // Note: This requires a pre-approved template named 'counselor_new_session'
+        return await this.sendTemplateMessage(
+          counselorPhone.replace(/\D/g, ''),
+          'counselor_new_session',
+          [studentName, studentPhone, urgencyLevel, issueDescription, sessionId]
+        );
+      } catch (templateError) {
+        console.error('❌ Both interactive and template messages failed:', templateError.response?.data || templateError.message);
+        
+        // Log this for admin review
+        console.log(`📝 Admin Action Required: Counselor ${counselorPhone} needs to initiate contact with bot first, or template 'counselor_new_session' needs to be created and approved.`);
+        
+        throw new Error(`Unable to notify counselor ${counselorPhone}. They may need to send a message to the bot first.`);
+      }
+    }
+  }
 }
 
 module.exports = new WhatsAppService(); 

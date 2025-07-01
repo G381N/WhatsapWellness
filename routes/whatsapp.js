@@ -3,6 +3,7 @@ const router = express.Router();
 const whatsappService = require('../services/whatsappService');
 const sessionManager = require('../services/sessionManager');
 const { saveAnonymousComplaint, saveCounselorRequest, saveDepartmentComplaint, getDepartments, getRandomCounselor, db } = require('../config/firebase');
+const admin = require('firebase-admin');
 
 // Webhook verification
 router.get('/', (req, res) => {
@@ -515,31 +516,20 @@ Would you like to access any other services?`;
     await whatsappService.sendListMessage(from, counselorConfirmationText, "Select Service", counselorServiceSections);
 
     // Send notification to assigned counselor with proper action buttons
-    const counselorMessage = `🆕 New Counseling Session Request
-
-📋 Student Details:
-• Name: ${userName}
-• Phone: ${from}
-• Urgency: ${userData.urgency_level}
-• Preferred Contact: ${userData.preferred_contact}
-
-💭 Request Details:
-• Issue: ${userData.issue_description}
-• Duration: ${userData.issue_duration}
-• Previous Help: ${userData.previous_help}
-
-⏰ Submitted: ${new Date().toLocaleString('en-IN')}
-
-👨‍⚕️ Action Required:
-Please review this counseling request and take appropriate action.`;
-
-    const counselorButtons = [
-      { id: `call_${from}`, title: 'Call Now' },
-      { id: `message_${from}`, title: 'Message' },
-      { id: `counselor_ack_${sessionId}_${from}`, title: 'Acknowledge' }
-    ];
-
-    await whatsappService.sendButtonMessage(assignedCounselor.phone.replace(/\D/g, ''), counselorMessage, counselorButtons);
+    try {
+      await whatsappService.sendCounselorNotification(
+        assignedCounselor.phone,
+        userName,
+        from,
+        sessionId,
+        userData.issue_description,
+        userData.urgency_level
+      );
+      console.log(`✅ Counselor notification sent to ${assignedCounselor.name}`);
+    } catch (notificationError) {
+      console.error('⚠️ Failed to notify counselor:', notificationError.message);
+      // Continue with the flow - the request is still saved, admin can follow up manually
+    }
 
     // Reset session
     sessionManager.clearSession(from);
@@ -971,10 +961,11 @@ async function handleComplaintAction(from, replyId, userName) {
       const [sessionId, studentPhone] = ackData.split('_');
       
       try {
-        // Get session data from Firebase to send proper acknowledgment
-        const sessionDoc = await db.collection('counseling_sessions').doc(sessionId).get();
+        // Get session data from Firebase - search by sessionId field in counselorRequests collection
+        const sessionQuery = await db.collection('counselorRequests').where('sessionId', '==', sessionId).get();
         
-        if (sessionDoc.exists) {
+        if (!sessionQuery.empty) {
+          const sessionDoc = sessionQuery.docs[0];
           const sessionData = sessionDoc.data();
           const studentName = sessionData.name || 'Student';
           
@@ -989,10 +980,10 @@ async function handleComplaintAction(from, replyId, userName) {
           await whatsappService.sendTextMessage(from, 
             `✅ Acknowledgment sent successfully to ${studentName}.\n\nSession Details:\n• Session ID: ${sessionId}\n• Issue: ${sessionData.issueDescription || 'Not specified'}\n• Urgency: ${sessionData.urgencyLevel || 'Normal'}\n\nThe student has been notified that you will contact them shortly.`);
           
-          // Update session status in Firebase
-          await db.collection('counseling_sessions').doc(sessionId).update({
+          // Update session status in Firebase using the actual document ID
+          await db.collection('counselorRequests').doc(sessionDoc.id).update({
             status: 'acknowledged',
-            acknowledgedAt: new Date(),
+            acknowledgedAt: admin.firestore.Timestamp.now(),
             acknowledgedBy: from,
             acknowledgedByCounselor: counselorName
           });
