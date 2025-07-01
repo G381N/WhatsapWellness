@@ -424,7 +424,11 @@ async function submitCounselorRequest(from, userName) {
     // Get random counselor assignment
     const assignedCounselor = await getRandomCounselor();
     
+    // Generate unique session ID
+    const sessionId = `CS-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    
     const requestData = {
+      sessionId: sessionId,
       name: userName,
       phoneNumber: from,
       issueDescription: userData.issue_description,
@@ -531,7 +535,7 @@ Please review this counseling request and take appropriate action.`;
     const counselorButtons = [
       { id: `call_${from}`, title: 'Call Now' },
       { id: `message_${from}`, title: 'Message' },
-      { id: `acknowledge_counselor_${from}_${encodeURIComponent(userName)}`, title: 'Acknowledge' }
+      { id: `counselor_ack_${sessionId}_${from}`, title: 'Acknowledge' }
     ];
 
     await whatsappService.sendButtonMessage(assignedCounselor.phone.replace(/\D/g, ''), counselorMessage, counselorButtons);
@@ -973,19 +977,23 @@ async function handleComplaintAction(from, replyId, userName) {
           const sessionData = sessionDoc.data();
           const studentName = sessionData.name || 'Student';
           
+          // Use the counselor's name from WhatsApp contact info (userName parameter)
+          const counselorName = userName || 'Counselor';
+          
           // Send acknowledgment to the student
           await whatsappService.sendTextMessage(studentPhone, 
-            `Hello ${studentName},\n\nYour counseling session request has been acknowledged by our counselor. They will contact you shortly to schedule your session.\n\nSession ID: ${sessionId}\n\nThank you for reaching out. We're here to support you.`);
+            `Hello ${studentName},\n\nYour counseling session request has been acknowledged by ${counselorName}. They will contact you shortly to schedule your session.\n\nSession ID: ${sessionId}\n\nThank you for reaching out. We're here to support you.`);
           
-          // Confirm to the counselor
+          // Confirm to the counselor  
           await whatsappService.sendTextMessage(from, 
-            `✅ Acknowledgment sent successfully to ${studentName}.\n\nSession Details:\n• Session ID: ${sessionId}\n• Issue: ${sessionData.issue || 'Not specified'}\n• Urgency: ${sessionData.urgency || 'Normal'}\n\nPlease contact the student to schedule the session.`);
+            `✅ Acknowledgment sent successfully to ${studentName}.\n\nSession Details:\n• Session ID: ${sessionId}\n• Issue: ${sessionData.issueDescription || 'Not specified'}\n• Urgency: ${sessionData.urgencyLevel || 'Normal'}\n\nThe student has been notified that you will contact them shortly.`);
           
           // Update session status in Firebase
           await db.collection('counseling_sessions').doc(sessionId).update({
             status: 'acknowledged',
             acknowledgedAt: new Date(),
-            acknowledgedBy: from
+            acknowledgedBy: from,
+            acknowledgedByCounselor: counselorName
           });
           
         } else {
