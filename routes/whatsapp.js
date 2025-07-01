@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const whatsappService = require('../services/whatsappService');
 const sessionManager = require('../services/sessionManager');
-const { saveAnonymousComplaint, saveCounselorRequest, saveDepartmentComplaint, getDepartments, getRandomCounselor } = require('../config/firebase');
+const { saveAnonymousComplaint, saveCounselorRequest, saveDepartmentComplaint, getDepartments, getRandomCounselor, db } = require('../config/firebase');
 
 // Webhook verification
 router.get('/', (req, res) => {
@@ -129,6 +129,16 @@ async function handleInteractiveMessage(from, interactive, userName) {
 
   // Handle urgency selection
   if (replyId.startsWith('urgency_')) {
+    const currentState = sessionManager.getState(from);
+    
+    // Check if user is in counselor questionnaire flow
+    if (currentState && currentState.startsWith('counselor_')) {
+      // This is part of counselor questionnaire - handle it there
+      await handleCounselorInteractiveResponse(from, replyId, userName);
+      return;
+    }
+    
+    // This is department complaint urgency selection
     const urgencyLevel = replyId.replace('urgency_', '');
     const urgencyMap = {
       'high': 'High',
@@ -499,8 +509,8 @@ Would you like to access any other services?`;
 
     await whatsappService.sendListMessage(from, counselorConfirmationText, "Select Service", counselorServiceSections);
 
-    // Send notification to assigned counselor
-    const counselorMessage = `🆕 New Counseling Request Assignment
+    // Send notification to assigned counselor with proper action buttons
+    const counselorMessage = `🆕 New Counseling Session Request
 
 📋 Student Details:
 • Name: ${userName}
@@ -516,24 +526,18 @@ Would you like to access any other services?`;
 ⏰ Submitted: ${new Date().toLocaleString('en-IN')}
 
 👨‍⚕️ Action Required:
-Please contact ${userName} to schedule a counseling session based on their preferred contact method.
-
-📧 Student expects contact from: ${assignedCounselor.name}`;
+Please review this counseling request and take appropriate action.`;
 
     const counselorButtons = [
-      { id: `message_student_${from}`, title: 'Message Student' }
+      { id: `call_${from}`, title: 'Call Now' },
+      { id: `message_${from}`, title: 'Message' },
+      { id: `acknowledge_counselor_${from}_${encodeURIComponent(userName)}`, title: 'Acknowledge' }
     ];
 
     await whatsappService.sendButtonMessage(assignedCounselor.phone.replace(/\D/g, ''), counselorMessage, counselorButtons);
 
     // Reset session
     sessionManager.clearSession(from);
-    
-    // Show service completion menu
-    setTimeout(async () => {
-      await whatsappService.sendServiceCompletionMenu(from, 
-        `Your counseling request has been processed. ${assignedCounselor.name} will contact you soon.`);
-    }, 2000);
 
   } catch (error) {
     console.error('Error submitting counselor request:', error);
@@ -953,6 +957,45 @@ async function handleComplaintAction(from, replyId, userName) {
         
         await whatsappService.sendTextMessage(from, 
           `Acknowledgment sent successfully to the student. They have been notified that their complaint (${complaintId}) is being reviewed.`);
+      }
+    
+    } else if (replyId.startsWith('counselor_ack_')) {
+      // Handle counselor acknowledgment for counseling sessions
+      // Format: counselor_ack_{sessionId}_{studentPhone}
+      const ackData = replyId.replace('counselor_ack_', '');
+      const [sessionId, studentPhone] = ackData.split('_');
+      
+      try {
+        // Get session data from Firebase to send proper acknowledgment
+        const sessionDoc = await db.collection('counseling_sessions').doc(sessionId).get();
+        
+        if (sessionDoc.exists) {
+          const sessionData = sessionDoc.data();
+          const studentName = sessionData.name || 'Student';
+          
+          // Send acknowledgment to the student
+          await whatsappService.sendTextMessage(studentPhone, 
+            `Hello ${studentName},\n\nYour counseling session request has been acknowledged by our counselor. They will contact you shortly to schedule your session.\n\nSession ID: ${sessionId}\n\nThank you for reaching out. We're here to support you.`);
+          
+          // Confirm to the counselor
+          await whatsappService.sendTextMessage(from, 
+            `✅ Acknowledgment sent successfully to ${studentName}.\n\nSession Details:\n• Session ID: ${sessionId}\n• Issue: ${sessionData.issue || 'Not specified'}\n• Urgency: ${sessionData.urgency || 'Normal'}\n\nPlease contact the student to schedule the session.`);
+          
+          // Update session status in Firebase
+          await db.collection('counseling_sessions').doc(sessionId).update({
+            status: 'acknowledged',
+            acknowledgedAt: new Date(),
+            acknowledgedBy: from
+          });
+          
+        } else {
+          await whatsappService.sendTextMessage(from, 
+            `Session not found. The session may have been removed or the ID is incorrect.`);
+        }
+      } catch (error) {
+        console.error('Error handling counselor acknowledgment:', error);
+        await whatsappService.sendTextMessage(from, 
+          `Error processing acknowledgment. Please try again or contact support.`);
       }
     }
   } catch (error) {
