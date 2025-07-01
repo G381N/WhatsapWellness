@@ -194,7 +194,8 @@ async function handleInteractiveMessage(from, interactive, userName) {
 
   // Handle complaint action buttons from department heads/admins
   if (replyId.startsWith('dashboard_') || replyId.startsWith('message_') || 
-      replyId.startsWith('call_') || replyId.startsWith('acknowledge_')) {
+      replyId.startsWith('call_') || replyId.startsWith('acknowledge_') || 
+      replyId.startsWith('counselor_ack_')) {
     await handleComplaintAction(from, replyId, userName);
     return;
   }
