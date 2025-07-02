@@ -26,6 +26,9 @@ router.get('/', (req, res) => {
 
 // Webhook message handler
 router.post('/', async (req, res) => {
+  console.log(`🚨 Webhook received request from IP: ${req.ip}, User-Agent: ${req.get('User-Agent')}`);
+  console.log(`📦 Request body type: ${typeof req.body}, length: ${JSON.stringify(req.body).length}`);
+  
   try {
     const body = req.body;
 
@@ -127,6 +130,8 @@ async function handleInteractiveMessage(from, interactive, userName) {
   const listReply = interactive.list_reply;
   
   const replyId = buttonReply?.id || listReply?.id;
+  
+  console.log(`📥 Interactive message received - From: ${from}, ReplyId: ${replyId}, UserName: ${userName}`);
 
   // Handle urgency selection
   if (replyId.startsWith('urgency_')) {
@@ -892,6 +897,8 @@ ${whatsappLink}
 
 // Handle complaint actions from department heads/admins
 async function handleComplaintAction(from, replyId, userName) {
+  console.log(`🎯 handleComplaintAction called - From: ${from}, ReplyId: ${replyId}, UserName: ${userName}`);
+  
   try {
     if (replyId.startsWith('dashboard_')) {
       const complaintId = replyId.replace('dashboard_', '');
@@ -960,17 +967,26 @@ async function handleComplaintAction(from, replyId, userName) {
       const ackData = replyId.replace('counselor_ack_', '');
       const [sessionId, studentPhone] = ackData.split('_');
       
+      console.log(`🔍 Debug: Processing counselor acknowledgment for sessionId: ${sessionId}, studentPhone: ${studentPhone}`);
+      
       try {
         // Get session data from Firebase - search by sessionId field in counselorRequests collection
+        console.log(`🔍 Debug: Querying counselorRequests collection for sessionId: ${sessionId}`);
         const sessionQuery = await db.collection('counselorRequests').where('sessionId', '==', sessionId).get();
+        
+        console.log(`🔍 Debug: Query result - empty: ${sessionQuery.empty}, size: ${sessionQuery.size}`);
         
         if (!sessionQuery.empty) {
           const sessionDoc = sessionQuery.docs[0];
           const sessionData = sessionDoc.data();
           const studentName = sessionData.name || 'Student';
           
+          console.log(`🔍 Debug: Found session data for student: ${studentName}`);
+          
           // Use the counselor's name from WhatsApp contact info (userName parameter)
           const counselorName = userName || 'Counselor';
+          
+          console.log(`🔍 Debug: Sending acknowledgment messages...`);
           
           // Send acknowledgment to the student
           await whatsappService.sendTextMessage(studentPhone, 
@@ -980,6 +996,8 @@ async function handleComplaintAction(from, replyId, userName) {
           await whatsappService.sendTextMessage(from, 
             `✅ Acknowledgment sent successfully to ${studentName}.\n\nSession Details:\n• Session ID: ${sessionId}\n• Issue: ${sessionData.issueDescription || 'Not specified'}\n• Urgency: ${sessionData.urgencyLevel || 'Normal'}\n\nThe student has been notified that you will contact them shortly.`);
           
+          console.log(`🔍 Debug: Updating session status in Firebase...`);
+          
           // Update session status in Firebase using the actual document ID
           await db.collection('counselorRequests').doc(sessionDoc.id).update({
             status: 'acknowledged',
@@ -988,12 +1006,23 @@ async function handleComplaintAction(from, replyId, userName) {
             acknowledgedByCounselor: counselorName
           });
           
+          console.log(`✅ Debug: Acknowledgment process completed successfully`);
+          
         } else {
+          console.log(`⚠️ Debug: No session found for sessionId: ${sessionId}`);
           await whatsappService.sendTextMessage(from, 
             `Session not found. The session may have been removed or the ID is incorrect.`);
         }
       } catch (error) {
-        console.error('Error handling counselor acknowledgment:', error);
+        console.error('❌ Error handling counselor acknowledgment:', error);
+        console.error('❌ Error details:', {
+          message: error.message,
+          stack: error.stack,
+          sessionId: sessionId,
+          studentPhone: studentPhone,
+          from: from,
+          userName: userName
+        });
         await whatsappService.sendTextMessage(from, 
           `Error processing acknowledgment. Please try again or contact support.`);
       }
