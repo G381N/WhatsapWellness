@@ -401,6 +401,7 @@ module.exports = {
   checkFirebaseHealth,
   getCounselors,
   getRandomCounselor,
+  db,
   // Developer attribution
   developer: 'Gebin George',
   version: '1.0.0',

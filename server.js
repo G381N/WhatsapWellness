@@ -15,9 +15,6 @@ const { initializeFirebase } = require('./config/firebase');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize Firebase
-initializeFirebase();
-
 // Middleware
 app.use(helmet());
 app.use(cors());
@@ -76,10 +73,24 @@ app.use('*', (req, res) => {
   });
 });
 
+// Initialize Firebase and start server
+async function startServer() {
+  try {
+    console.log('🔥 Initializing Firebase...');
+    await initializeFirebase();
+    console.log('✅ Firebase initialized successfully');
+
 app.listen(PORT, () => {
   console.log(`🚀 Christ Mental Health Support Bot server running on port ${PORT}`);
   console.log(`📱 Webhook URL: ${process.env.NODE_ENV === 'production' ? 'https://your-render-url.onrender.com' : `http://localhost:${PORT}`}/webhook`);
   console.log(`👨‍💻 Developed by Gebin George for Christ University Student Wellness`);
 });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 module.exports = app; 

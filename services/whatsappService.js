@@ -243,32 +243,32 @@ Please select an option from the menu below:`;
     } catch (error) {
       console.error('❌ Error fetching departments (Developer: Gebin George):', error);
       // Fallback to hardcoded departments
-      const sections = [
-        {
-          title: "School of Sciences",
-          rows: [
-            {
+    const sections = [
+      {
+        title: "School of Sciences",
+        rows: [
+          {
               id: "dept_MCA",
-              title: "MCA",
-              description: "Master of Computer Applications"
-            },
-            {
+            title: "MCA",
+            description: "Master of Computer Applications"
+          },
+          {
               id: "dept_MSC_AIML",
-              title: "MSC AIML",
-              description: "MSc Artificial Intelligence & Machine Learning"
-            }
-          ]
-        }
-      ];
+            title: "MSC AIML",
+            description: "MSc Artificial Intelligence & Machine Learning"
+          }
+        ]
+      }
+    ];
 
-      return await this.sendListMessage(
-        to,
+    return await this.sendListMessage(
+      to,
         "Please select your department from the list below to proceed with raising a complaint:",
-        "Choose Department",
-        sections
-      );
-    }
+      "Choose Department",
+      sections
+    );
   }
+}
 
   // Send urgency selection buttons
   async sendUrgencySelection(to) {

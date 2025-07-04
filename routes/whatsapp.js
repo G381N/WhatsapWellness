@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const whatsappService = require('../services/whatsappService');
 const sessionManager = require('../services/sessionManager');
-const { saveAnonymousComplaint, saveCounselorRequest, saveDepartmentComplaint, getDepartments, getRandomCounselor, db } = require('../config/firebase');
+const { saveAnonymousComplaint, saveCounselorRequest, saveDepartmentComplaint, getDepartments, getRandomCounselor } = require('../config/firebase');
 const admin = require('firebase-admin');
 
 // Webhook verification
@@ -88,6 +88,52 @@ async function handleTextMessage(from, messageText, userName) {
   const text = messageText.toLowerCase().trim();
   const currentState = sessionManager.getState(from);
 
+  // Handle Christ Wellness project inquiry
+  if (text.includes('christ wellness project') || text.includes('christ wellness') || 
+      (text.includes('interested') && text.includes('christ wellness'))) {
+    const projectInfoText = `🎓 **Christ University Student Wellness WhatsApp Bot**
+
+*Developed by: Gebin George*
+
+**🔧 Tech Stack:**
+• **Backend:** Node.js with Express.js
+• **Database:** Firebase Firestore
+• **Messaging:** WhatsApp Business API
+• **Deployment:** Render.com
+• **Authentication:** Firebase Admin SDK
+
+**🚀 How It Works:**
+This intelligent bot provides comprehensive mental health support for Christ University students through:
+
+• **Professional Counseling** - Connect with qualified counselors instantly
+• **Anonymous Complaints** - Submit concerns safely without revealing identity
+• **Department Complaints** - Report issues directly to department heads
+• **Community Platform** - Access wellness resources and connect with peers
+
+**🛡️ Privacy & Security:**
+• End-to-end encrypted conversations
+• Firebase security rules for data protection
+• Anonymous complaint system
+• GDPR compliant data handling
+
+**💡 Key Features:**
+• Real-time WhatsApp integration
+• Smart session management
+• Multi-department support
+• Automated counselor assignment
+• Admin dashboard integration
+
+**🌐 Website:** https://student-wellness-gamma.vercel.app
+
+---
+*Ready to experience our wellness support system?*
+
+**Type 'hi' or 'menu' to start using the bot! 👋**`;
+
+    await whatsappService.sendTextMessage(from, projectInfoText);
+    return;
+  }
+
   // Handle menu keyword
   if (text === 'menu' || text === 'start' || text === 'hi' || text === 'hello') {
     if (currentState === 'initial') {
@@ -132,6 +178,13 @@ async function handleInteractiveMessage(from, interactive, userName) {
   const replyId = buttonReply?.id || listReply?.id;
   
   console.log(`📥 Interactive message received - From: ${from}, ReplyId: ${replyId}, UserName: ${userName}`);
+  
+  // 🐛 DEBUG: Log detailed information about the interactive message
+  console.log(`🐛 DEBUG Interactive Details:`);
+  console.log(`   Button Reply ID: ${buttonReply?.id || 'None'}`);
+  console.log(`   List Reply ID: ${listReply?.id || 'None'}`);
+  console.log(`   Final Reply ID: ${replyId}`);
+  console.log(`   Starts with counselor_ack_: ${replyId ? replyId.startsWith('counselor_ack_') : false}`);
 
   // Handle urgency selection
   if (replyId.startsWith('urgency_')) {
@@ -972,7 +1025,7 @@ async function handleComplaintAction(from, replyId, userName) {
       try {
         // Get session data from Firebase - search by sessionId field in counselorRequests collection
         console.log(`🔍 Debug: Querying counselorRequests collection for sessionId: ${sessionId}`);
-        const sessionQuery = await db.collection('counselorRequests').where('sessionId', '==', sessionId).get();
+        const sessionQuery = await admin.firestore().collection('counselorRequests').where('sessionId', '==', sessionId).get();
         
         console.log(`🔍 Debug: Query result - empty: ${sessionQuery.empty}, size: ${sessionQuery.size}`);
         
@@ -999,7 +1052,7 @@ async function handleComplaintAction(from, replyId, userName) {
           console.log(`🔍 Debug: Updating session status in Firebase...`);
           
           // Update session status in Firebase using the actual document ID
-          await db.collection('counselorRequests').doc(sessionDoc.id).update({
+          await admin.firestore().collection('counselorRequests').doc(sessionDoc.id).update({
             status: 'acknowledged',
             acknowledgedAt: admin.firestore.Timestamp.now(),
             acknowledgedBy: from,
@@ -1040,4 +1093,4 @@ setInterval(() => {
   console.log('Cleaned up old user sessions');
 }, 60 * 60 * 1000);
 
-module.exports = router; 
+module.exports = router;
