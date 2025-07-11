@@ -955,7 +955,7 @@ async function handleComplaintAction(from, replyId, userName) {
   try {
     if (replyId.startsWith('dashboard_')) {
       const complaintId = replyId.replace('dashboard_', '');
-      const dashboardUrl = `https://student-wellness-gamma.vercel.app/complaints/${complaintId}`;
+      const dashboardUrl = `https://student-wellness-gamma.vercel.app/dashboard/department-complaints`;
       
       await whatsappService.sendUrlButtonMessage(from, 
         "Tap below to view the full complaint",
